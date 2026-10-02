@@ -73,10 +73,12 @@ const initialWorks = [
   { id: 7, field: 8, date: '2026-09-30', machine: 'МТЗ-1523', plate: 'АВ 7102', driver: 'Петров Николай', time: '08:00–11:20', duration: '3 ч 20 мин', operation: 'Химобработка (гербициды)', implement: 'Amazone UX 4200', width: 24, net: 41.1, overlap: .8, status: 'confirmed', finalArea: 41.1, season: '2026', material: 'СЗР · демо-препарат', rate: 1.2, unit: 'л' },
 ];
 let works = structuredClone(initialWorks);
+let projectMachines = structuredClone(AuroraFleet.initialProjectMachines);
 try {
   const saved = JSON.parse(localStorage.getItem('aurora-agro-demo-v1') || 'null');
   if (saved?.works && Array.isArray(saved.works) && saved.works.length === initialWorks.length) works = saved.works;
   if (saved?.rotation) fields.forEach(f => { if (saved.rotation[f.id]) f.rotation = saved.rotation[f.id]; });
+  if (Array.isArray(saved?.projectMachines) && saved.projectMachines.length >= AuroraFleet.initialProjectMachines.length) projectMachines = AuroraFleet.normalizeProjectMachines(saved.projectMachines);
 } catch { /* В приватном режиме макет продолжает работать без сохранения. */ }
 // Однозначные переименования старого демо. Обобщённые виды требуют уточнения.
 works.forEach(w => { w.operation = ({ 'Посев': 'Сев', 'Пахота': 'Вспашка' })[w.operation] || w.operation; });
@@ -117,13 +119,13 @@ const currentCrop = (f, year = season) => f.rotation[year] || '';
 const cropTag = crop => crop ? `<span class="crop"><i style="background:${cropInks[crop]}"></i>${esc(crop)}</span>` : '<span class="hint">Не назначена</span>';
 const options = (values, selectedValue) => values.map(v => `<option value="${esc(v)}" ${String(v) === String(selectedValue) ? 'selected' : ''}>${esc(v || 'Не назначена')}</option>`).join('');
 function persist() {
-  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ works, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])) })); }
+  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ works, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])), projectMachines })); }
   catch { toast('Изменения действуют в текущей вкладке: сохранение браузером недоступно.'); }
 }
 let toastTimer;
 function toast(text) { $('#toast').textContent = text; $('#toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 4300); }
 function modal(title, content, setup) {
-  $('#dialog-content').innerHTML = `<div class="modal-head"><h2>${esc(title)}</h2><button class="close" aria-label="Закрыть">×</button></div>${content}`;
+  $('#dialog-content').innerHTML = `<div class="modal-head"><h2>${esc(title)}</h2><button class="close" aria-label="Закрыть"><span class="ds-symbol" aria-hidden="true">close</span></button></div>${content}`;
   $('#dialog .close').onclick = () => $('#dialog').close();
   $('#dialog').showModal();
   if (setup) setup();
@@ -140,13 +142,18 @@ function filteredWorks() { return works.filter(w => w.date === date && String(w.
 function statusBadge(w) { return `<span class="badge ${w.status === 'confirmed' ? 'green' : w.status === 'rejected' ? 'gray' : ''}">${w.status === 'confirmed' ? '✓ Подтверждена' : w.status === 'rejected' ? 'Отклонена' : 'Ждёт расчёта'}</span>`; }
 function updateNav() {
   const titles = { operations: 'Операции', fields: 'Поля', rotation: 'Севооборот', reports: 'Отчёты', directory: 'Справочники' };
-  $('#breadcrumb').textContent = titles[page]; document.title = `${titles[page]} — Аврора Агро`;
-  $$('nav a').forEach(a => { a.classList.toggle('active', a.dataset.page === page); if (a.dataset.page === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const directory = directoryCards.find(card => page === `directory/${card.id}`);
+  const editingMachine = machineFromEditRoute();
+  $('#breadcrumb').innerHTML = editingMachine ? `<a href="#directory">Справочники</a><span>/</span><a href="#directory/machines">Техника</a><span>/</span>${esc(editingMachine.name)}` : directory ? `<a href="#directory">Справочники</a><span>/</span>${directory.title}` : titles[page];
+  document.title = `${editingMachine ? editingMachine.name : directory?.title || titles[page]} — Аврора Агро`;
+  $$('nav a').forEach(a => { const active = a.dataset.page === page || (a.dataset.page === 'directory' && (!!directory || !!editingMachine)); a.classList.toggle('active', active); if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   $('#pending-count').textContent = works.filter(w => w.status === 'pending' && String(w.season) === season).length;
 }
 function render() {
   updateNav();
-  ({ operations: renderOperations, fields: renderFields, rotation: renderRotation, reports: renderReports, directory: renderDirectory })[page]();
+  if (machineFromEditRoute()) renderMachineEditorPage();
+  else if (page.startsWith('directory/')) renderDirectoryPage();
+  else ({ operations: renderOperations, fields: renderFields, rotation: renderRotation, reports: renderReports, directory: renderDirectory })[page]();
 }
 function mapMarkup(field, calculated = false, tracks = true) {
   const trackLines = Array.from({ length: 21 }, (_, i) => { const x = 180 + i * 15; return `<path d="M${x} 145V422"/>`; }).join('');
@@ -198,7 +205,7 @@ function editorMarkup() {
   const header = `<div class="editor-title"><span class="eyebrow">Работа № ${String(w.id).padStart(3,'0')}</span>${statusBadge(w)}</div><h2>${esc(w.machine)} <span class="hint">${w.plate}</span></h2><div class="machine-line">${icon('clock')}<span>${w.time}</span><span>${w.duration}</span></div>`;
   if (w.status !== 'pending') return `${header}<div class="saved-message">${icon(w.status === 'confirmed' ? 'check' : 'help')}<h2>${w.status === 'confirmed' ? 'Работа подтверждена' : 'Работа отклонена'}</h2><p>${w.status === 'confirmed' ? `${esc(w.operation)} · ${fmt(w.finalArea)} га<br>${esc(w.material || 'Материалы не использовались')}${w.material ? ` · ${fmt(w.finalArea*w.rate)} ${esc(w.unit)}` : ''}<br>Сезон ${esc(w.season)} · ${esc(currentCrop(f,w.season) || 'Культура не назначена')}` : 'Эта работа не включена в отчёты.'}</p></div><div class="actions">${button('Вернуть к проверке','reopen')}${w.status === 'confirmed' ? button('Открыть отчёт','open-report',true) : ''}</div><p class="calculate-note">Данные сохранены в этом браузере.</p>`;
   return `${header}<div class="step-line"><span class="${step === 'settings' ? 'current' : ''}">1. Параметры</span><i></i><span class="${step === 'area' ? 'current' : ''}">2. Площадь</span><i></i><span class="${step === 'materials' ? 'current' : ''}">3. Материалы</span></div>
-    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron" aria-hidden="true">⌄</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options(['Horsch Pronto 6 DC','КПС-8','Amazone UX 4200','ППО-8-40'],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label><div class="full width-note">${icon('leaf')}<span id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')} · из севооборота</span></div></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия. В макете используются демонстрационные показатели.</p><div class="actions">${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
+    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options(['Horsch Pronto 6 DC','КПС-8','Amazone UX 4200','ППО-8-40'],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label><div class="full width-note">${icon('leaf')}<span id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')} · из севооборота</span></div></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия. В макете используются демонстрационные показатели.</p><div class="actions">${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
     ${step === 'area' ? `<div class="calculation"><span class="eyebrow">Чистая обработанная площадь · демо</span><div class="big-number">${fmt(result.net)} <small>га</small></div><div class="calculation-details"><div>Площадь поля<strong>${fmt(f.area)} га</strong></div><div>Перекрытия<strong>${fmt(result.overlap)} га</strong></div><div>Пропуски<strong>${fmt(result.gaps)} га</strong></div></div></div><h3>Какую площадь учесть?</h3><div class="area-choices">${[['calculated',`Расчётную · ${fmt(result.net)} га`],['field',`До площади поля · ${fmt(f.area)} га`],['manual','Ввести вручную']].map(([value,title]) => `<label class="choice"><input type="radio" name="area-mode" value="${value}" ${areaMode === value ? 'checked' : ''}>${title}</label>`).join('')}</div><label id="manual-area-label" ${areaMode !== 'manual' ? 'hidden' : ''}>Площадь, га<input id="manual-area" type="number" min="0.01" max="100000" step="0.01" value="${esc(manualArea)}"></label><p class="calculate-note">Перекрытия показаны отдельно. При повторном проходе или смещении трекера проверьте результат перед учётом.</p><div class="actions">${button('Назад','back-settings')}${button('Подтвердить площадь','accept-area',true)}</div>` : ''}
     ${step === 'materials' ? `<div class="calculation"><span class="eyebrow">Площадь к учёту</span><div class="big-number">${fmt(draft.finalArea)} <small>га</small></div><span class="hint">${esc(draft.operation)} · сезон ${esc(draft.season)}</span></div><div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['','Пшеница · Элегия','Удобрение · NPK 16:16:16','СЗР · демо-препарат'],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions">${button('Назад','back-area')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
     <div class="actions">${button('Отклонить работу','reject',false)}</div>`;
@@ -373,18 +380,163 @@ function downloadCsv(name, rows) {
   const safeCell = value => { let text=String(value??'');if(/^[=+\-@\t\r]/.test(text))text="'"+text;return '"'+text.replace(/"/g,'""')+'"'; };
   const blob=new Blob(['\uFEFF'+rows.map(row=>row.map(safeCell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Выгрузка CSV подготовлена');
 }
+const directoryCards = [
+  {id:'machines',title:'Техника',icon:'tractor',description:'Машины, подключённые к этому хозяйству из корневого проекта.',detailTitle:'Госномер',get items(){return projectMachines.map(machine=>[machine.name,machine.plate,machine.type,machine.id]);}},
+  {id:'implements',title:'Прицепные орудия',icon:'layers',description:'Ширина захвата используется при расчёте работ.',detailTitle:'Ширина захвата',items:[['Horsch Pronto 6 DC','6,0 м'],['КПС-8','8,0 м'],['Amazone UX 4200','24,0 м'],['ППО-8-40','3,2 м']]},
+  {id:'crops',title:'Культуры',icon:'leaf',description:'Общий справочник для полей, севооборота и отчётов.',items:crops.filter(Boolean).map(c=>[c,''])},
+  {id:'materials',title:'Материалы',icon:'directory',description:'Фиксируется применение. Складские остатки не ведутся.',detailTitle:'Тип · единица',items:[['Пшеница · Элегия','Семена · кг'],['Удобрение · NPK 16:16:16','Удобрения · кг'],['СЗР · демо-препарат','СЗР · л']]},
+  {id:'operators',title:'Механизаторы',icon:'help',description:'Подставляются из GPS-данных; доступны для корректировки в работе.',items:[['Ковалёв Александр',''],['Иванов Сергей',''],['Петров Николай',''],['Смирнов Андрей','']]},
+];
+const recordCount = count => `${count} ${count % 10 === 1 && count % 100 !== 11 ? 'запись' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'записи' : 'записей'}`;
+const formatTrackerOffset = value => value === 0 ? 'По центру' : `${Math.abs(value).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} м ${value < 0 ? 'влево' : 'вправо'}`;
+function machineFromEditRoute() {
+  return projectMachines.find(machine => page === `directory/machines/${encodeURIComponent(machine.id)}/edit`);
+}
 function renderDirectory() {
-  const cards=[
-    {title:'Техника',icon:'tractor',description:'Машины из системы мониторинга Аврора.',items:[['МТЗ-3022','АВ 4821'],['John Deere 8430','АВ 1934'],['МТЗ-1523','АВ 7102'],['Кировец К-742','АВ 3396']]},
-    {title:'Прицепные орудия',icon:'layers',description:'Ширина захвата используется при расчёте работ.',items:[['Horsch Pronto 6 DC','6,0 м'],['КПС-8','8,0 м'],['Amazone UX 4200','24,0 м'],['ППО-8-40','3,2 м']]},
-    {title:'Культуры',icon:'leaf',description:'Общий справочник для полей, севооборота и отчётов.',items:crops.filter(Boolean).map(c=>[c,''])},
-    {title:'Материалы',icon:'directory',description:'Фиксируется применение. Складские остатки не ведутся.',items:[['Пшеница · Элегия','Семена · кг'],['Удобрение · NPK 16:16:16','Удобрения · кг'],['СЗР · демо-препарат','СЗР · л']]},
-    {title:'Механизаторы',icon:'help',description:'Подставляются из GPS-данных; доступны для корректировки в работе.',items:[['Ковалёв Александр',''],['Иванов Сергей',''],['Петров Николай',''],['Смирнов Андрей','']]},
-  ];
-  main.innerHTML=`${heading('Справочники','Общие данные хозяйства для всех разделов.')}<div class="directory-grid">${cards.map(c=>`<section class="directory-card">${icon(c.icon)}<h2>${c.title}</h2><p>${c.description}</p>${c.items.map(([name,detail])=>`<div class="directory-item"><span>${esc(name)}</span><small>${esc(detail)}</small></div>`).join('')}</section>`).join('')}</div><p class="section-note">В MVP-макете справочники доступны для просмотра. Их значения используются в формах операций и севооборота.</p>`;
+  main.innerHTML=`${heading('Справочники','Общие данные хозяйства для всех разделов.')}<div class="directory-grid">${directoryCards.map(card=>`<a class="directory-card directory-link" href="#directory/${card.id}">${icon(card.icon)}<span class="directory-card-count">${recordCount(card.items.length)}</span><h2>${card.title}</h2><p>${card.description}</p><span class="directory-open">Открыть справочник ${icon('arrow')}</span></a>`).join('')}</div><p class="section-note">Технику можно добавить из корневого проекта. Остальные справочники доступны для просмотра. Технологические операции задаются на уровне системы.</p>`;
+}
+function renderDirectoryPage() {
+  const card = directoryCards.find(item => page === `directory/${item.id}`);
+  if (!card) return;
+  const hasDetail = !!card.detailTitle;
+  const isMachines = card.id === 'machines';
+  const items = [...card.items].sort(([first], [second]) => first.localeCompare(second, 'ru', {numeric:true}));
+  const columns = 1 + Number(hasDetail) + (isMachines ? 2 : 0);
+  main.innerHTML=`${heading(card.title,card.description,isMachines?button('Добавить технику','add-machine',true,'plus'):'')}<div class="directory-toolbar"><a class="btn" href="#directory">← Все справочники</a>${searchBox('directory-search',`Поиск: ${card.title.toLowerCase()}`)}<span class="hint" id="directory-result-count">${recordCount(items.length)}</span></div><section class="table-panel"><div class="table-scroll"><table class="directory-table"><thead><tr><th>Наименование</th>${hasDetail?`<th>${card.detailTitle}</th>`:''}${isMachines?'<th>Тип техники</th><th>Смещение трекера</th>':''}</tr></thead><tbody>${items.map(([name,detail,type,id])=>`<tr data-search="${esc(`${name} ${detail} ${type || ''}`.toLocaleLowerCase('ru'))}" ${isMachines?`data-machine-href="#directory/machines/${encodeURIComponent(id)}/edit"`:''}><td>${isMachines?`<a class="directory-machine-link" href="#directory/machines/${encodeURIComponent(id)}/edit" aria-label="Открыть технику ${esc(name)}"><strong>${esc(name)}</strong></a>`:`<strong>${esc(name)}</strong>`}</td>${hasDetail?`<td>${esc(detail)}</td>`:''}${isMachines?`<td>${esc(type)}</td><td>${formatTrackerOffset(projectMachines.find(machine => machine.id === id)?.trackerOffset ?? 0)}</td>`:''}</tr>`).join('')}<tr id="directory-empty" hidden><td colspan="${columns}" class="empty">Ничего не найдено. Попробуйте другой запрос.</td></tr></tbody></table></div></section><p class="section-note">${isMachines?'Технику можно добавить из корневого проекта, изменить её тип и положение трекера для этого хозяйства. Изменения сохраняются только в браузере.':'В MVP-макете записи доступны только для просмотра.'}</p>`;
+  $('#directory-search').addEventListener('input', e => {
+    const query = e.target.value.trim().toLocaleLowerCase('ru');
+    let visible = 0;
+    $$('.directory-table tr[data-search]').forEach(row => { row.hidden = !row.dataset.search.includes(query); if (!row.hidden) visible++; });
+    $('#directory-result-count').textContent = `${visible} из ${card.items.length}`;
+    $('#directory-empty').hidden = visible > 0;
+  });
+  if (isMachines) {
+    $('#add-machine').onclick = openMachinePicker;
+    $$('[data-machine-href]').forEach(row => row.onclick = event => {
+      if (!event.target.closest('a')) location.hash = row.dataset.machineHref;
+    });
+  }
+}
+function machineTypePickerMarkup(selectedType = '') {
+  return `<div class="root-machine-type operation-picker"><label for="machine-type">Тип техники</label><div class="operation-control"><input id="machine-type" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="machine-type-options" autocomplete="off" required placeholder="Выберите или найдите тип" value="${esc(selectedType)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="machine-type-options" class="operation-options" role="listbox" aria-label="Типы техники" hidden></div><span id="machine-type-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><p id="machine-type-description" class="section-note"></p><p id="fleet-error" class="fleet-error" role="alert"></p>`;
+}
+function bindMachineTypePicker(initialType = '') {
+  const types = [...AuroraFleet.machineTypes].sort((first,second)=>first.name.localeCompare(second.name,'ru'));
+  let selectedType = initialType, matches = [], active = -1;
+  const input = $('#machine-type'), list = $('#machine-type-options');
+  $('#machine-type-description').textContent = types.find(type=>type.name===initialType)?.description || '';
+  const close = () => {list.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');input.value=selectedType;};
+  const open = (query = '') => {
+    matches=types.filter(type=>type.name.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')));
+    active=-1;
+    list.innerHTML=matches.length?matches.map((type,index)=>`<div id="machine-type-option-${index}" role="option" aria-selected="${type.name===selectedType}" data-index="${index}">${esc(type.name)}</div>`).join(''):'<div class="operation-empty">Ничего не найдено</div>';
+    list.hidden=false;input.setAttribute('aria-expanded','true');input.removeAttribute('aria-activedescendant');
+    $('#machine-type-search-status').textContent=matches.length?`Найдено типов: ${matches.length}`:'Ничего не найдено';
+  };
+  const choose = index => {
+    const type=matches[index];if(!type)return;
+    selectedType=type.name;$('#machine-type-description').textContent=type.description;$('#fleet-error').textContent='';close();
+  };
+  input.onfocus=()=>{open();input.select();};
+  input.onclick=()=>{if(list.hidden){open();input.select();}};
+  input.oninput=()=>{selectedType='';$('#machine-type-description').textContent='';$('#fleet-error').textContent='';open(input.value);};
+  input.onblur=close;
+  input.onkeydown=event=>{
+    if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+      event.preventDefault();if(list.hidden)open();if(!matches.length)return;
+      active=event.key==='ArrowDown'?(active+1)%matches.length:(active<=0?matches.length-1:active-1);
+      [...list.querySelectorAll('[role="option"]')].forEach((option,index)=>option.classList.toggle('active',index===active));
+      input.setAttribute('aria-activedescendant',`machine-type-option-${active}`);list.children[active].scrollIntoView({block:'nearest'});
+    }else if(event.key==='Enter'&&!list.hidden){event.preventDefault();if(active>=0)choose(active);else if(matches.length===1)choose(0);}
+    else if(event.key==='Escape'){event.preventDefault();close();}
+  };
+  list.onpointerdown=event=>event.preventDefault();
+  list.onclick=event=>{const option=event.target.closest('[data-index]');if(option)choose(Number(option.dataset.index));};
+  return () => selectedType;
+}
+function refreshMachineDirectory() {
+  const query = $('#directory-search')?.value || '';
+  renderDirectoryPage();
+  if (query) { $('#directory-search').value = query; $('#directory-search').dispatchEvent(new Event('input')); }
+}
+function renderMachineEditorPage() {
+  const machine = machineFromEditRoute();
+  if (!machine) return;
+  const offset = machine.trackerOffset ?? 0;
+  main.innerHTML = `<div class="machine-edit-layout"><div class="page-heading machine-edit-heading"><h1>${esc(machine.name)}</h1><a class="btn machine-edit-back" href="#directory/machines">← К списку техники</a></div><section class="machine-edit-panel"><div class="fleet-machine-summary"><strong>${esc(machine.name)}</strong><small>Госномер: ${esc(machine.plate)}</small></div><p>Название и госномер приходят из корневого проекта. Настройки ниже относятся к этому хозяйству.</p>${machineTypePickerMarkup(machine.type)}<div class="tracker-settings"><div class="tracker-settings-head"><h2>Положение трекера</h2><div class="tracker-unit-switch" role="group" aria-label="Единица смещения"><button type="button" data-tracker-unit="m" aria-pressed="true">Метры</button><button type="button" data-tracker-unit="cm" aria-pressed="false">Сантиметры</button></div></div><p id="tracker-hint">Поперечное смещение от центра машины: отрицательное значение — влево, положительное — вправо. Схема условная.</p><div class="tracker-visual"><span>Лево</span><div class="tracker-vehicle"><span class="tracker-center-line" aria-hidden="true"></span><input id="tracker-offset-range" type="range" min="-5" max="5" step="0.01" value="${offset}" aria-label="Положение трекера на схеме" aria-describedby="tracker-hint"></div><span>Право</span></div><div class="tracker-scale"><span id="tracker-scale-left">−5 м</span><span id="tracker-scale-center">Центр · 0 м</span><span id="tracker-scale-right">+5 м</span></div><div class="tracker-numeric"><label id="tracker-offset-label" for="tracker-offset">Смещение</label><div><div class="tracker-input-wrap"><input id="tracker-offset" type="number" min="-5" max="5" step="0.01" value="${offset.toFixed(2)}" inputmode="decimal" aria-describedby="tracker-hint tracker-offset-unit tracker-error"><span id="tracker-offset-unit">м</span></div><button type="button" class="btn" id="tracker-center">По центру</button></div></div><p id="tracker-error" class="fleet-error" role="alert"></p></div><div class="actions"><a class="btn" href="#directory/machines">Отмена</a>${button('Сохранить','save-machine',true)}</div></section></div>`;
+  const selectedType = bindMachineTypePicker(machine.type);
+  const numberInput = $('#tracker-offset'), rangeInput = $('#tracker-offset-range');
+  let offsetUnit = 'm';
+  const unitFactor = () => offsetUnit === 'cm' ? 100 : 1;
+  const unitDigits = () => offsetUnit === 'cm' ? 0 : 2;
+  const validOffset = value => Number.isFinite(value) && Math.abs(value) <= 5 * unitFactor() && Math.round(value * (offsetUnit === 'cm' ? 1 : 100)) / (offsetUnit === 'cm' ? 1 : 100) === value;
+  const clearTrackerError = () => { $('#tracker-error').textContent = ''; };
+  $$('[data-tracker-unit]').forEach(button => button.onclick = () => {
+    if (button.dataset.trackerUnit === offsetUnit) return;
+    const offsetMeters = Number(rangeInput.value) / unitFactor();
+    offsetUnit = button.dataset.trackerUnit;
+    const limit = 5 * unitFactor(), converted = offsetUnit === 'cm' ? Math.round(offsetMeters * 100) : offsetMeters;
+    rangeInput.min = numberInput.min = String(-limit);
+    rangeInput.max = numberInput.max = String(limit);
+    rangeInput.step = numberInput.step = offsetUnit === 'cm' ? '1' : '0.01';
+    rangeInput.value = numberInput.value = converted.toFixed(unitDigits());
+    numberInput.inputMode = offsetUnit === 'cm' ? 'numeric' : 'decimal';
+    $('#tracker-scale-left').textContent = `−${limit} ${offsetUnit === 'cm' ? 'см' : 'м'}`;
+    $('#tracker-scale-center').textContent = `Центр · 0 ${offsetUnit === 'cm' ? 'см' : 'м'}`;
+    $('#tracker-scale-right').textContent = `+${limit} ${offsetUnit === 'cm' ? 'см' : 'м'}`;
+    $('#tracker-offset-unit').textContent = offsetUnit === 'cm' ? 'см' : 'м';
+    $$('[data-tracker-unit]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    clearTrackerError();
+  });
+  rangeInput.oninput = () => { const value = Number(rangeInput.value); numberInput.value = value.toFixed(unitDigits()); clearTrackerError(); };
+  numberInput.oninput = () => {
+    const value = Number(numberInput.value);
+    if (!numberInput.value || !validOffset(value)) { $('#tracker-error').textContent = offsetUnit === 'cm' ? 'Укажите целое значение от −500 до +500 см.' : 'Укажите значение от −5 до +5 м с шагом 0,01 м.'; return; }
+    rangeInput.value = String(value); clearTrackerError();
+  };
+  $('#tracker-center').onclick = () => { numberInput.value = (0).toFixed(unitDigits()); rangeInput.value = '0'; clearTrackerError(); };
+  $('#save-machine').onclick = () => {
+    try {
+      if (!numberInput.value) throw new Error('Укажите смещение трекера.');
+      if (!validOffset(Number(numberInput.value))) throw new Error(offsetUnit === 'cm' ? 'Смещение трекера должно быть от −500 до +500 см с шагом 1 см.' : 'Смещение трекера должно быть от −5 до +5 м с шагом 0,01 м.');
+      projectMachines = AuroraFleet.updateMachineSettings(projectMachines, machine.id, selectedType(), Number(numberInput.value) / unitFactor());
+    } catch (error) { $(error.message.includes('Смещение') || error.message.includes('смещение') ? '#tracker-error' : '#fleet-error').textContent = error.message; return; }
+    persist();
+    location.hash = 'directory/machines';
+    toast(`Настройки ${machine.name} обновлены`);
+  };
+}
+function openMachinePicker() {
+  const available = AuroraFleet.availableRootMachines(AuroraFleet.rootMachines, projectMachines);
+  const content = `<p>Выберите технику из корневого проекта и укажите её тип для этого хозяйства. Данные демонстрационные.</p>${available.length ? `${searchBox('root-machine-search','Поиск по названию или госномеру')}<div class="root-machine-list" role="radiogroup" aria-label="Техника корневого проекта">${available.map(machine=>`<label class="root-machine-choice" data-search="${esc(`${machine.name} ${machine.plate}`.toLocaleLowerCase('ru'))}"><input type="radio" name="root-machine" value="${esc(machine.id)}"><span><strong>${esc(machine.name)}</strong><small>${esc(machine.plate)}</small></span></label>`).join('')}</div><p class="root-machine-empty" id="root-machine-empty" hidden>Техника не найдена</p>${machineTypePickerMarkup()}<div class="actions">${button('Отмена','cancel-transfer')}${button('Перенести в проект','transfer-machine',true)}</div>` : '<p>Вся техника корневого проекта уже добавлена в это хозяйство.</p>'}`;
+  $('#dialog').classList.add('fleet-dialog');
+  $('#dialog').addEventListener('close',()=>$('#dialog').classList.remove('fleet-dialog'),{once:true});
+  modal('Добавить технику',content,()=>{
+    if (!available.length) return;
+    const selectedType=bindMachineTypePicker();
+    $('#cancel-transfer').onclick=()=>$('#dialog').close();
+    $('#root-machine-search').oninput=e=>{
+      const query=e.target.value.trim().toLocaleLowerCase('ru');
+      let count=0;
+      $$('.root-machine-choice').forEach(row=>{row.hidden=!row.dataset.search.includes(query);if(row.hidden)$('input',row).checked=false;else count++;});
+      $('#root-machine-empty').hidden=count>0;
+    };
+    $('#transfer-machine').onclick=()=>{
+      const id=$('input[name="root-machine"]:checked')?.value;
+      const machine=available.find(item=>item.id===id);
+      if(!machine){$('#fleet-error').textContent='Выберите технику из списка.';return;}
+      try { projectMachines=AuroraFleet.transferMachine(projectMachines,machine,selectedType()); }
+      catch(error){$('#fleet-error').textContent=error.message;return;}
+      persist();$('#dialog').close();refreshMachineDirectory();toast(`${machine.name} добавлена в проект`);
+    };
+  });
 }
 $('#global-season').onchange=e=>{season=e.target.value;initDraft();render();};
-$('#help').onclick=()=>modal('О макете Аврора Агро','<p>Кликабельный MVP по описанию «Аналог Гектеры». Основной путь: выберите работу → запустите расчёт → подтвердите площадь → добавьте материал → подтвердите работу.</p><p>Данные, схема полей и расчёты демонстрационные. Подключения к GPS, географического расчёта и серверного хранения нет. Изменения сохраняются только в этом браузере.</p><p>Демо-работы доступны за 30 сентября и 1 октября 2026 года. Справочники доступны для просмотра, севооборот — для редактирования.</p><div class="actions">'+button('Сбросить демо-данные','reset-demo')+'</div>',()=>$('#reset-demo').onclick=()=>{works=structuredClone(initialWorks);try{localStorage.removeItem('aurora-agro-demo-v1');}catch{}$('#dialog').close();location.reload();});
-window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);page=['operations','fields','rotation','reports','directory'].includes(target)?target:'operations';drawing=false;drawPoints=[];render();window.scrollTo({top:0,behavior:'instant'});});
-page=['operations','fields','rotation','reports','directory'].includes(location.hash.slice(1))?location.hash.slice(1):'operations';
+$('#help').onclick=()=>modal('О макете Аврора Агро','<p>Кликабельный MVP по описанию «Аналог Гектеры». Основной путь: выберите работу → запустите расчёт → подтвердите площадь → добавьте материал → подтвердите работу.</p><p>Данные, схема полей и расчёты демонстрационные. Подключения к GPS, географического расчёта и серверного хранения нет. Изменения сохраняются только в этом браузере.</p><p>Демо-работы доступны за 30 сентября и 1 октября 2026 года. Технику можно переносить из демонстрационного корневого проекта и менять её тип, севооборот — редактировать.</p><div class="actions">'+button('Сбросить демо-данные','reset-demo')+'</div>',()=>$('#reset-demo').onclick=()=>{works=structuredClone(initialWorks);try{localStorage.removeItem('aurora-agro-demo-v1');}catch{}$('#dialog').close();location.reload();});
+function pageFromHash() {
+  const target = location.hash.slice(1);
+  return ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
+}
+window.addEventListener('hashchange',()=>{page=pageFromHash();drawing=false;drawPoints=[];render();window.scrollTo({top:0,behavior:'instant'});});
+page=pageFromHash();
 initDraft();render();
