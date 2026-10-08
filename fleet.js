@@ -1,17 +1,13 @@
 /* Демонстрационный парк корневого проекта и правила переноса в хозяйство. */
 const AuroraFleet = (() => {
   const machineTypes = Object.freeze([
-    { name: 'Трактор', description: 'Колёсные, гусеничные, компактные тракторы.' },
-    { name: 'Посевная техника', description: 'Сеялки, посадочные и рассадопосадочные машины.' },
-    { name: 'Почвообработка', description: 'Плуги, культиваторы, бороны, дискаторы, глубокорыхлители.' },
-    { name: 'Уборочная техника', description: 'Зерноуборочные, кормоуборочные, картофелеуборочные и свеклоуборочные комбайны.' },
-    { name: 'Кормозаготовка', description: 'Косилки, грабли, ворошилки, пресс-подборщики.' },
-    { name: 'Внесение удобрений', description: 'Разбрасыватели минеральных и органических удобрений, навозоразбрасыватели.' },
-    { name: 'Защита растений', description: 'Самоходные и прицепные опрыскиватели.' },
-    { name: 'Транспортировка', description: 'Сельхозприцепы, перегрузчики зерна, бункеры-перегрузчики.' },
-    { name: 'Погрузочная техника', description: 'Телескопические, фронтальные и другие погрузчики.' },
-    { name: 'Полив и мелиорация', description: 'Дождевальные машины, насосные установки, ирригационная техника.' },
-    { name: 'Специализированная техника', description: 'Садовая, виноградная, овощеводческая, лесная техника.' },
+    { name: 'Комбайн зерноуборочный' },
+    { name: 'Комбайн кормоуборочный' },
+    { name: 'Опрыскиватель самоходный' },
+    { name: 'Косилка самоходная' },
+    { name: 'Трактор' },
+    { name: 'Погрузочная техника' },
+    { name: 'Специализированная техника' },
   ]);
   const initialProjectMachines = [
     { id: 'mtz-3022', name: 'МТЗ-3022', plate: 'АВ 4821', type: 'Трактор', trackerOffset: 0 },
@@ -32,18 +28,19 @@ const AuroraFleet = (() => {
     const projectIds = new Set(project.map(machine => machine.id));
     return root.filter(machine => !projectIds.has(machine.id));
   }
+  const validType = type => type === '' || machineTypes.some(item => item.name === type);
   function transferMachine(project, machine, type) {
-    if (!machineTypes.some(item => item.name === type)) throw new Error('Выберите тип техники из списка.');
+    if (!validType(type)) throw new Error('Выберите тип техники из списка.');
     if (project.some(item => item.id === machine.id || item.plate === machine.plate)) throw new Error('Эта техника уже есть в проекте.');
     return [...project, { id: machine.id, name: machine.name, plate: machine.plate, type, trackerOffset: 0 }];
   }
   function updateMachineType(project, id, type) {
-    if (!machineTypes.some(item => item.name === type)) throw new Error('Выберите тип техники из списка.');
+    if (!validType(type)) throw new Error('Выберите тип техники из списка.');
     if (!project.some(machine => machine.id === id)) throw new Error('Техника не найдена в проекте.');
     return project.map(machine => machine.id === id ? { ...machine, type } : machine);
   }
   function updateMachineSettings(project, id, type, trackerOffset) {
-    if (!machineTypes.some(item => item.name === type)) throw new Error('Выберите тип техники из списка.');
+    if (!validType(type)) throw new Error('Выберите тип техники из списка.');
     if (!project.some(machine => machine.id === id)) throw new Error('Техника не найдена в проекте.');
     if (typeof trackerOffset !== 'number' || !Number.isFinite(trackerOffset) || Math.abs(trackerOffset) > 5 || Math.round(trackerOffset * 100) / 100 !== trackerOffset) {
       throw new Error('Смещение трекера должно быть от −5 до +5 м с шагом 0,01 м.');
@@ -51,7 +48,10 @@ const AuroraFleet = (() => {
     return project.map(machine => machine.id === id ? { ...machine, type, trackerOffset } : machine);
   }
   function normalizeProjectMachines(project) {
-    return project.map(machine => ({ ...machine, type: machine.type === 'Тракторы и тяга' ? 'Трактор' : machine.type, trackerOffset: machine.trackerOffset ?? 0 }));
+    return project.map(machine => {
+      const type = machine.type === 'Тракторы и тяга' ? 'Трактор' : machine.type;
+      return { ...machine, type: validType(type) ? type : '', trackerOffset: machine.trackerOffset ?? 0 };
+    });
   }
   return { machineTypes, initialProjectMachines, rootMachines, availableRootMachines, transferMachine, updateMachineType, updateMachineSettings, normalizeProjectMachines };
 })();

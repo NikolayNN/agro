@@ -402,7 +402,7 @@ function renderDirectoryPage() {
   const isMachines = card.id === 'machines';
   const items = [...card.items].sort(([first], [second]) => first.localeCompare(second, 'ru', {numeric:true}));
   const columns = 1 + Number(hasDetail) + (isMachines ? 2 : 0);
-  main.innerHTML=`${heading(card.title,card.description,isMachines?button('Добавить технику','add-machine',true,'plus'):'')}<div class="directory-toolbar"><a class="btn" href="#directory">← Все справочники</a>${searchBox('directory-search',`Поиск: ${card.title.toLowerCase()}`)}<span class="hint" id="directory-result-count">${recordCount(items.length)}</span></div><section class="table-panel"><div class="table-scroll"><table class="directory-table"><thead><tr><th>Наименование</th>${hasDetail?`<th>${card.detailTitle}</th>`:''}${isMachines?'<th>Тип техники</th><th>Смещение трекера</th>':''}</tr></thead><tbody>${items.map(([name,detail,type,id])=>`<tr data-search="${esc(`${name} ${detail} ${type || ''}`.toLocaleLowerCase('ru'))}" ${isMachines?`data-machine-href="#directory/machines/${encodeURIComponent(id)}/edit"`:''}><td>${isMachines?`<a class="directory-machine-link" href="#directory/machines/${encodeURIComponent(id)}/edit" aria-label="Открыть технику ${esc(name)}"><strong>${esc(name)}</strong></a>`:`<strong>${esc(name)}</strong>`}</td>${hasDetail?`<td>${esc(detail)}</td>`:''}${isMachines?`<td>${esc(type)}</td><td>${formatTrackerOffset(projectMachines.find(machine => machine.id === id)?.trackerOffset ?? 0)}</td>`:''}</tr>`).join('')}<tr id="directory-empty" hidden><td colspan="${columns}" class="empty">Ничего не найдено. Попробуйте другой запрос.</td></tr></tbody></table></div></section><p class="section-note">${isMachines?'Технику можно добавить из корневого проекта, изменить её тип и положение трекера для этого хозяйства. Изменения сохраняются только в браузере.':'В MVP-макете записи доступны только для просмотра.'}</p>`;
+  main.innerHTML=`${heading(card.title,card.description,isMachines?button('Добавить технику','add-machine',true,'plus'):'')}<div class="directory-toolbar"><a class="btn" href="#directory">← Все справочники</a>${searchBox('directory-search',`Поиск: ${card.title.toLowerCase()}`)}<span class="hint" id="directory-result-count">${recordCount(items.length)}</span></div><section class="table-panel"><div class="table-scroll"><table class="directory-table"><thead><tr><th>Наименование</th>${hasDetail?`<th>${card.detailTitle}</th>`:''}${isMachines?'<th>Тип техники</th><th>Смещение трекера</th>':''}</tr></thead><tbody>${items.map(([name,detail,type,id])=>`<tr data-search="${esc(`${name} ${detail} ${type || ''}`.toLocaleLowerCase('ru'))}" ${isMachines?`data-machine-href="#directory/machines/${encodeURIComponent(id)}/edit"`:''}><td>${isMachines?`<a class="directory-machine-link" href="#directory/machines/${encodeURIComponent(id)}/edit" aria-label="Открыть технику ${esc(name)}"><strong>${esc(name)}</strong></a>`:`<strong>${esc(name)}</strong>`}</td>${hasDetail?`<td>${esc(detail)}</td>`:''}${isMachines?`<td>${esc(type || 'Не указан')}</td><td>${formatTrackerOffset(projectMachines.find(machine => machine.id === id)?.trackerOffset ?? 0)}</td>`:''}</tr>`).join('')}<tr id="directory-empty" hidden><td colspan="${columns}" class="empty">Ничего не найдено. Попробуйте другой запрос.</td></tr></tbody></table></div></section><p class="section-note">${isMachines?'Технику можно добавить из корневого проекта, изменить её тип и положение трекера для этого хозяйства. Изменения сохраняются только в браузере.':'В MVP-макете записи доступны только для просмотра.'}</p>`;
   $('#directory-search').addEventListener('input', e => {
     const query = e.target.value.trim().toLocaleLowerCase('ru');
     let visible = 0;
@@ -418,28 +418,27 @@ function renderDirectoryPage() {
   }
 }
 function machineTypePickerMarkup(selectedType = '') {
-  return `<div class="root-machine-type operation-picker"><label for="machine-type">Тип техники</label><div class="operation-control"><input id="machine-type" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="machine-type-options" autocomplete="off" required placeholder="Выберите или найдите тип" value="${esc(selectedType)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="machine-type-options" class="operation-options" role="listbox" aria-label="Типы техники" hidden></div><span id="machine-type-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><p id="machine-type-description" class="section-note"></p><p id="fleet-error" class="fleet-error" role="alert"></p>`;
+  return `<div class="root-machine-type operation-picker"><label for="machine-type">Тип техники</label><div class="operation-control"><input id="machine-type" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="machine-type-options" autocomplete="off" placeholder="Не указан" value="${esc(selectedType)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="machine-type-options" class="operation-options" role="listbox" aria-label="Типы техники" hidden></div><span id="machine-type-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><p id="fleet-error" class="fleet-error" role="alert"></p>`;
 }
 function bindMachineTypePicker(initialType = '') {
-  const types = [...AuroraFleet.machineTypes].sort((first,second)=>first.name.localeCompare(second.name,'ru'));
+  const types = [{name:'',label:'Не указан'}, ...[...AuroraFleet.machineTypes].sort((first,second)=>first.name.localeCompare(second.name,'ru'))];
   let selectedType = initialType, matches = [], active = -1;
   const input = $('#machine-type'), list = $('#machine-type-options');
-  $('#machine-type-description').textContent = types.find(type=>type.name===initialType)?.description || '';
   const close = () => {list.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');input.value=selectedType;};
   const open = (query = '') => {
-    matches=types.filter(type=>type.name.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')));
+    matches=types.filter(type=>(type.label || type.name).toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')));
     active=-1;
-    list.innerHTML=matches.length?matches.map((type,index)=>`<div id="machine-type-option-${index}" role="option" aria-selected="${type.name===selectedType}" data-index="${index}">${esc(type.name)}</div>`).join(''):'<div class="operation-empty">Ничего не найдено</div>';
+    list.innerHTML=matches.length?matches.map((type,index)=>`<div id="machine-type-option-${index}" role="option" aria-selected="${type.name===selectedType}" data-index="${index}">${esc(type.label || type.name)}</div>`).join(''):'<div class="operation-empty">Ничего не найдено</div>';
     list.hidden=false;input.setAttribute('aria-expanded','true');input.removeAttribute('aria-activedescendant');
     $('#machine-type-search-status').textContent=matches.length?`Найдено типов: ${matches.length}`:'Ничего не найдено';
   };
   const choose = index => {
     const type=matches[index];if(!type)return;
-    selectedType=type.name;$('#machine-type-description').textContent=type.description;$('#fleet-error').textContent='';close();
+    selectedType=type.name;$('#fleet-error').textContent='';close();
   };
   input.onfocus=()=>{open();input.select();};
   input.onclick=()=>{if(list.hidden){open();input.select();}};
-  input.oninput=()=>{selectedType='';$('#machine-type-description').textContent='';$('#fleet-error').textContent='';open(input.value);};
+  input.oninput=()=>{selectedType='';$('#fleet-error').textContent='';open(input.value);};
   input.onblur=close;
   input.onkeydown=event=>{
     if(event.key==='ArrowDown'||event.key==='ArrowUp'){
@@ -508,7 +507,7 @@ function renderMachineEditorPage() {
 }
 function openMachinePicker() {
   const available = AuroraFleet.availableRootMachines(AuroraFleet.rootMachines, projectMachines);
-  const content = `<p>Выберите технику из корневого проекта и укажите её тип для этого хозяйства. Данные демонстрационные.</p>${available.length ? `${searchBox('root-machine-search','Поиск по названию или госномеру')}<div class="root-machine-list" role="radiogroup" aria-label="Техника корневого проекта">${available.map(machine=>`<label class="root-machine-choice" data-search="${esc(`${machine.name} ${machine.plate}`.toLocaleLowerCase('ru'))}"><input type="radio" name="root-machine" value="${esc(machine.id)}"><span><strong>${esc(machine.name)}</strong><small>${esc(machine.plate)}</small></span></label>`).join('')}</div><p class="root-machine-empty" id="root-machine-empty" hidden>Техника не найдена</p>${machineTypePickerMarkup()}<div class="actions">${button('Отмена','cancel-transfer')}${button('Перенести в проект','transfer-machine',true)}</div>` : '<p>Вся техника корневого проекта уже добавлена в это хозяйство.</p>'}`;
+  const content = `<p>Выберите технику из корневого проекта. Тип можно указать сейчас или позже. Данные демонстрационные.</p>${available.length ? `${searchBox('root-machine-search','Поиск по названию или госномеру')}<div class="root-machine-list" role="radiogroup" aria-label="Техника корневого проекта">${available.map(machine=>`<label class="root-machine-choice" data-search="${esc(`${machine.name} ${machine.plate}`.toLocaleLowerCase('ru'))}"><input type="radio" name="root-machine" value="${esc(machine.id)}"><span><strong>${esc(machine.name)}</strong><small>${esc(machine.plate)}</small></span></label>`).join('')}</div><p class="root-machine-empty" id="root-machine-empty" hidden>Техника не найдена</p>${machineTypePickerMarkup()}<div class="actions">${button('Отмена','cancel-transfer')}${button('Перенести в проект','transfer-machine',true)}</div>` : '<p>Вся техника корневого проекта уже добавлена в это хозяйство.</p>'}`;
   $('#dialog').classList.add('fleet-dialog');
   $('#dialog').addEventListener('close',()=>$('#dialog').classList.remove('fleet-dialog'),{once:true});
   modal('Добавить технику',content,()=>{

@@ -125,7 +125,6 @@ dialog{background:var(--ds-surface-raised);color:var(--ds-fg);border-radius:var(
 .root-machine-choice small{margin-top:2px}
 .root-machine-type{margin-top:var(--ds-gap-lg)}
 .fleet-dialog .root-machine-type .operation-options{top:auto;bottom:100%;max-height:240px;margin:0 0 4px}
-.fleet-dialog #machine-type-description{padding:8px 0 0;min-height:28px;margin:0}
 .fleet-error{min-height:20px;margin:0;color:var(--ds-danger-fg)!important;font:var(--ds-type-caption)!important}
 
 /* Выбор системной операции с поиском в самом поле. */
