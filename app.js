@@ -88,6 +88,11 @@ let workQuery = '', fieldQuery = '', reportKind = 'director', reportDateFrom = '
 let reportGroup = 'field', reportMaterial = true, reportOverlap = false, visibleSeasons = [2024, 2025, 2026];
 let drawing = false, drawPoints = [];
 const main = $('#main');
+const mockupVersion = window.AURORA_MOCKUP_VERSION || 'локально';
+$('#prototype-version').textContent = `MVP · ${mockupVersion}`;
+if (mockupVersion !== 'локально') {
+  $('#prototype-version').href = `https://github.com/NikolayNN/agro/releases/tag/${encodeURIComponent(mockupVersion)}`;
+}
 // Скоупы Aurora DS: оформление и плотность независимы от хозяйственных данных.
 function applyAppearance(appearance, density) {
   document.body.dataset.dsAppearance = appearance;

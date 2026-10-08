@@ -1,0 +1,71 @@
+name: Publish mockup
+
+on:
+  push:
+    tags:
+      - 'mockup-v*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout tagged version
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check tag points to current main
+        run: |
+          git fetch origin main
+          test "$GITHUB_SHA" = "$(git rev-parse origin/main)" || {
+            echo 'Release tag must point to the current main commit.' >&2
+            exit 1
+          }
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify mockup
+        run: |
+          node --test tests/*.test.cjs
+          node --check app.js
+          node --check fleet.js
+
+      - name: Build tagged site and release notes
+        run: node scripts/build-pages.cjs "$GITHUB_REF_NAME" > release-notes.md
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Publish version notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "Макет $GITHUB_REF_NAME" --notes-file release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Макет $GITHUB_REF_NAME" --notes-file release-notes.md
+          fi

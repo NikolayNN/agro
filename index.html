@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="vendor/aurora/dist/styles.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="aurora.css">
+  <script src="version.js" defer></script>
   <script src="fleet.js" defer></script>
   <script src="app.js" defer></script>
 </head>
@@ -25,7 +26,7 @@
     <div class="sidebar-bottom"><div class="connection"><i></i><span>Аврора GPS<small>Демонстрационные треки</small></span><span class="connection-check">✓</span></div><button class="help-button" id="help" aria-label="О макете"><span data-icon="help"></span><span class="nav-label">О макете</span></button><div class="profile"><span class="avatar">АК</span><div><strong>Александр Ковалёв</strong><small>Агроном</small></div></div></div>
   </aside>
   <div class="shell">
-    <header class="topbar"><div class="breadcrumbs">Рабочее пространство<span>/</span><strong id="breadcrumb">Операции</strong></div><div class="topbar-right"><button class="appearance-control" id="appearance" aria-label="Включить тёмное оформление" title="Тёмное оформление"><span class="ds-symbol" aria-hidden="true">dark_mode</span></button><button class="appearance-control" id="density" aria-label="Включить компактную плотность" title="Компактная плотность"><span class="ds-symbol" aria-hidden="true">density_small</span></button><span class="prototype-tag">MVP · демо</span><label class="season-select">Сезон <select id="global-season" aria-label="Текущий сезон"><option>2026</option><option>2025</option><option>2027</option></select></label></div></header>
+    <header class="topbar"><div class="breadcrumbs">Рабочее пространство<span>/</span><strong id="breadcrumb">Операции</strong></div><div class="topbar-right"><button class="appearance-control" id="appearance" aria-label="Включить тёмное оформление" title="Тёмное оформление"><span class="ds-symbol" aria-hidden="true">dark_mode</span></button><button class="appearance-control" id="density" aria-label="Включить компактную плотность" title="Компактная плотность"><span class="ds-symbol" aria-hidden="true">density_small</span></button><a class="prototype-tag" id="prototype-version" href="https://github.com/NikolayNN/agro/releases" target="_blank" rel="noopener noreferrer">MVP · локально</a><label class="season-select">Сезон <select id="global-season" aria-label="Текущий сезон"><option>2026</option><option>2025</option><option>2027</option></select></label></div></header>
     <main id="main"></main>
     <footer class="footer"><span>Аврора Агро</span><span>Меньше рутины. Больше ясности в поле.</span><span>Демонстрационные данные</span></footer>
   </div>
