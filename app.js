@@ -422,14 +422,14 @@ function renderDirectoryPage() {
     });
   }
 }
-function machineTypePickerMarkup(selectedType = '') {
-  return `<div class="root-machine-type operation-picker"><label for="machine-type">Тип техники</label><div class="operation-control"><input id="machine-type" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="machine-type-options" autocomplete="off" placeholder="Не указан" value="${esc(selectedType)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="machine-type-options" class="operation-options" role="listbox" aria-label="Типы техники" hidden></div><span id="machine-type-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><p id="fleet-error" class="fleet-error" role="alert"></p>`;
+function machineTypePickerMarkup(selectedType = null) {
+  return `<div class="root-machine-type operation-picker"><label for="machine-type">Тип техники</label><div class="operation-control"><input id="machine-type" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="machine-type-options" autocomplete="off" placeholder="Не указан" value="${esc(selectedType ?? '')}"><button type="button" class="machine-type-clear" id="machine-type-clear" aria-label="Сбросить тип техники" title="Сбросить тип техники" ${selectedType == null ? 'hidden' : ''}><span class="ds-symbol" aria-hidden="true">close</span></button><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="machine-type-options" class="operation-options" role="listbox" aria-label="Типы техники" hidden></div><span id="machine-type-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><p id="fleet-error" class="fleet-error" role="alert"></p>`;
 }
-function bindMachineTypePicker(initialType = '') {
-  const types = [{name:'',label:'Не указан'}, ...[...AuroraFleet.machineTypes].sort((first,second)=>first.name.localeCompare(second.name,'ru'))];
-  let selectedType = initialType, matches = [], active = -1;
-  const input = $('#machine-type'), list = $('#machine-type-options');
-  const close = () => {list.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');input.value=selectedType;};
+function bindMachineTypePicker(initialType = null) {
+  const types = [{name:null,label:'Не указан'}, ...[...AuroraFleet.machineTypes].sort((first,second)=>first.name.localeCompare(second.name,'ru'))];
+  let selectedType = initialType ?? null, matches = [], active = -1;
+  const input = $('#machine-type'), list = $('#machine-type-options'), clearButton = $('#machine-type-clear');
+  const close = () => {list.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');input.value=selectedType ?? '';clearButton.hidden=selectedType===null;};
   const open = (query = '') => {
     matches=types.filter(type=>(type.label || type.name).toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')));
     active=-1;
@@ -441,9 +441,10 @@ function bindMachineTypePicker(initialType = '') {
     const type=matches[index];if(!type)return;
     selectedType=type.name;$('#fleet-error').textContent='';close();
   };
+  clearButton.onclick=()=>{selectedType=null;$('#fleet-error').textContent='';close();};
   input.onfocus=()=>{open();input.select();};
   input.onclick=()=>{if(list.hidden){open();input.select();}};
-  input.oninput=()=>{selectedType='';$('#fleet-error').textContent='';open(input.value);};
+  input.oninput=()=>{selectedType=null;clearButton.hidden=true;$('#fleet-error').textContent='';open(input.value);};
   input.onblur=close;
   input.onkeydown=event=>{
     if(event.key==='ArrowDown'||event.key==='ArrowUp'){

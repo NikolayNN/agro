@@ -27,9 +27,10 @@ test('перенос добавляет выбранную машину с ти�
   assert.equal(project.length, 1);
 });
 
-test('перенос разрешает пустой тип, но отклоняет неизвестный', () => {
+test('перенос сохраняет отсутствующий тип как null и отклоняет другие пустые значения', () => {
   const machine = { id: 'combine-1', name: 'CLAAS LEXION 760', plate: 'АВ 7624' };
-  assert.equal(fleet.transferMachine([], machine, '')[0].type, '');
+  assert.equal(fleet.transferMachine([], machine, null)[0].type, null);
+  assert.throws(() => fleet.transferMachine([], machine, ''), /тип/i);
   assert.throws(() => fleet.transferMachine([], machine, 'Неизвестный тип'), /тип/i);
 });
 
@@ -43,10 +44,12 @@ test('сохранённый старый тип трактора отображ
   const saved = [
     { id: 'tractor-1', name: 'МТЗ-3022', plate: 'АВ 4821', type: 'Тракторы и тяга' },
     { id: 'combine-1', name: 'CLAAS LEXION 760', plate: 'АВ 7624', type: 'Уборочная техника' },
+    { id: 'other-1', name: 'Без типа', plate: 'АВ 0000', type: '' },
   ];
   assert.deepEqual(fleet.normalizeProjectMachines(saved), [
     { id: 'tractor-1', name: 'МТЗ-3022', plate: 'АВ 4821', type: 'Трактор', trackerOffset: 0 },
-    { ...saved[1], type: '', trackerOffset: 0 },
+    { ...saved[1], type: null, trackerOffset: 0 },
+    { ...saved[2], type: null, trackerOffset: 0 },
   ]);
 });
 
@@ -62,10 +65,11 @@ test('редактирование меняет только тип выбран
   assert.equal(project[0].type, 'Трактор');
 });
 
-test('редактирование отклоняет неизвестную технику и тип', () => {
+test('редактирование позволяет снять тип и сохраняет null', () => {
   const project = [{ id: 'tractor-1', name: 'МТЗ-3022', plate: 'АВ 4821', type: 'Трактор' }];
   assert.throws(() => fleet.updateMachineType(project, 'missing', 'Трактор'), /не найден/i);
-  assert.equal(fleet.updateMachineType(project, 'tractor-1', '')[0].type, '');
+  assert.equal(fleet.updateMachineType(project, 'tractor-1', null)[0].type, null);
+  assert.throws(() => fleet.updateMachineType(project, 'tractor-1', ''), /тип/i);
 });
 
 test('положение трекера сохраняется у выбранной машины вместе с типом', () => {
@@ -77,7 +81,7 @@ test('положение трекера сохраняется у выбранн
   assert.deepEqual(next[0], { ...project[0], trackerOffset: 1.23 });
   assert.deepEqual(next[1], project[1]);
   assert.equal(project[0].trackerOffset, 0);
-  assert.equal(fleet.updateMachineSettings(project, 'tractor-1', '', 0)[0].type, '');
+  assert.equal(fleet.updateMachineSettings(project, 'tractor-1', null, 0)[0].type, null);
 });
 
 test('смещение трекера допускает сотые метра в обе стороны в пределах пяти метров', () => {

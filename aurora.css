@@ -132,6 +132,10 @@ dialog{background:var(--ds-surface-raised);color:var(--ds-fg);border-radius:var(
 .operation-picker>label{display:block;margin-bottom:6px}
 .operation-control{position:relative}
 .operation-control input{width:100%;padding-right:32px}
+.root-machine-type .operation-control input{padding-right:66px}
+.machine-type-clear{position:absolute;right:36px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;background:transparent;color:var(--ds-fg-muted);cursor:pointer}
+.machine-type-clear[hidden]{display:none}
+.machine-type-clear .ds-symbol{font-size:var(--ds-icon);line-height:1}
 .operation-chevron{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--ds-fg-subtle);font-size:var(--ds-icon);line-height:1}
 .operation-options{position:absolute;top:100%;left:0;right:0;z-index:30;max-height:260px;overflow-y:auto;margin-top:4px;padding:4px;background:var(--ds-surface);border:1px solid var(--ds-border-field);border-radius:var(--ds-radius-field);box-shadow:var(--ds-shadow-md)}
 .operation-options [role=option]{padding:8px 10px;font:var(--ds-type-body);color:var(--ds-fg);border-radius:var(--ds-radius-xs);cursor:pointer;overflow-wrap:anywhere}

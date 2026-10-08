@@ -28,7 +28,7 @@ const AuroraFleet = (() => {
     const projectIds = new Set(project.map(machine => machine.id));
     return root.filter(machine => !projectIds.has(machine.id));
   }
-  const validType = type => type === '' || machineTypes.some(item => item.name === type);
+  const validType = type => type === null || machineTypes.some(item => item.name === type);
   function transferMachine(project, machine, type) {
     if (!validType(type)) throw new Error('Выберите тип техники из списка.');
     if (project.some(item => item.id === machine.id || item.plate === machine.plate)) throw new Error('Эта техника уже есть в проекте.');
@@ -50,7 +50,7 @@ const AuroraFleet = (() => {
   function normalizeProjectMachines(project) {
     return project.map(machine => {
       const type = machine.type === 'Тракторы и тяга' ? 'Трактор' : machine.type;
-      return { ...machine, type: validType(type) ? type : '', trackerOffset: machine.trackerOffset ?? 0 };
+      return { ...machine, type: validType(type) ? type : null, trackerOffset: machine.trackerOffset ?? 0 };
     });
   }
   return { machineTypes, initialProjectMachines, rootMachines, availableRootMachines, transferMachine, updateMachineType, updateMachineSettings, normalizeProjectMachines };
