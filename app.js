@@ -62,6 +62,20 @@ const fields = [
   { id: 15, name: 'У озера', area: 36.2, rotation: { 2024: 'Кукуруза', 2025: 'Рапс озимый', 2026: 'Ячмень яровой' } },
   { id: 6, name: 'Восточное', area: 91.5, rotation: { 2024: 'Ячмень яровой', 2025: 'Пшеница озимая', 2026: 'Рапс озимый' } },
   { id: 21, name: 'Дальний клин', area: 53.7, rotation: { 2025: 'Кукуруза', 2026: 'Пшеница озимая' } },
+  { id: 22, name: 'Южное', area: 47.3, rotation: { 2024: 'Кукуруза', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
+  { id: 23, name: 'За деревней', area: 62.1, rotation: { 2024: 'Рапс озимый', 2025: 'Пшеница озимая', 2026: 'Ячмень яровой' } },
+  { id: 24, name: 'Луговое', area: 28.9, rotation: { 2024: 'Ячмень яровой', 2025: 'Пар', 2026: 'Кукуруза' } },
+  { id: 25, name: 'У речки', area: 39.6, rotation: { 2024: 'Пар', 2025: 'Кукуруза', 2026: 'Рапс озимый' } },
+  { id: 26, name: 'Западное', area: 84.2, rotation: { 2024: 'Пшеница озимая', 2025: 'Ячмень яровой', 2026: 'Пар' } },
+  { id: 27, name: 'Сосновый бор', area: 51.8, rotation: { 2024: 'Рапс озимый', 2025: 'Кукуруза', 2026: 'Пшеница озимая' } },
+  { id: 28, name: 'Верхний клин', area: 33.5, rotation: { 2024: 'Пшеница озимая', 2025: 'Рапс озимый', 2026: 'Ячмень яровой' } },
+  { id: 29, name: 'Нижнее', area: 56.4, rotation: { 2024: 'Кукуруза', 2025: 'Пшеница озимая', 2026: 'Рапс озимый' } },
+  { id: 30, name: 'У дороги', area: 44.7, rotation: { 2024: 'Пар', 2025: 'Ячмень яровой', 2026: 'Кукуруза' } },
+  { id: 31, name: 'Большое', area: 112.6, rotation: { 2024: 'Ячмень яровой', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
+  { id: 32, name: 'Малый участок', area: 18.3, rotation: { 2024: 'Рапс озимый', 2025: 'Пшеница озимая', 2026: 'Пар' } },
+  { id: 33, name: 'За садом', area: 37.9, rotation: { 2024: 'Кукуруза', 2025: 'Пар', 2026: 'Ячмень яровой' } },
+  { id: 34, name: 'Дубрава', area: 69.1, rotation: { 2024: 'Пшеница озимая', 2025: 'Кукуруза', 2026: 'Рапс озимый' } },
+  { id: 35, name: 'Дальнее южное', area: 73.4, rotation: { 2024: 'Пар', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
 ];
 const initialWorks = [
   { id: 1, field: 12, date: '2026-10-01', machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '08:15–12:40', duration: '4 ч 25 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 61.42, overlap: 2.16, status: 'pending', season: '2026' },
@@ -155,12 +169,13 @@ function updateNav() {
   $('#pending-count').textContent = works.filter(w => w.status === 'pending' && String(w.season) === season).length;
 }
 function render() {
+  main.classList.toggle('fields-page', page === 'fields');
   updateNav();
   if (machineFromEditRoute()) renderMachineEditorPage();
   else if (page.startsWith('directory/')) renderDirectoryPage();
   else ({ operations: renderOperations, fields: renderFields, rotation: renderRotation, reports: renderReports, directory: renderDirectory })[page]();
 }
-function mapMarkup(field, calculated = false, tracks = true) {
+function mapMarkup(field, calculated = false, tracks = true, showTitle = true) {
   const trackLines = Array.from({ length: 21 }, (_, i) => { const x = 180 + i * 15; return `<path d="M${x} 145V422"/>`; }).join('');
   const turns = Array.from({ length: 20 }, (_, i) => { const x = 180 + i * 15, y = i % 2 ? 145 : 422; return `<path d="M${x} ${y}Q${x + 7.5} ${y + (i % 2 ? -17 : 17)} ${x + 15} ${y}"/>`; }).join('');
   return `<div class="map-panel ${drawing ? 'drawing' : ''}">
@@ -173,7 +188,7 @@ function mapMarkup(field, calculated = false, tracks = true) {
         <text class="map-label" x="595" y="310">№ 08</text><text class="map-label" x="341" y="530">№ 21</text>
       </g><g id="draw-layer"></g>
     </svg>
-    <div class="map-title"><span class="field-symbol">${icon('fields')}</span><div><strong>№ ${field.id} · ${esc(field.name)}</strong><small>${fmt(field.area)} га · ${esc(currentCrop(field) || 'Культура не назначена')}</small></div></div>
+    ${showTitle ? `<div class="map-title"><span class="field-symbol">${icon('fields')}</span><div><strong>№ ${field.id} · ${esc(field.name)}</strong><small>${fmt(field.area)} га · ${esc(currentCrop(field) || 'Культура не назначена')}</small></div></div>` : ''}
     <div class="map-tools"><button data-zoom="in" aria-label="Увеличить карту">+</button><button data-zoom="out" aria-label="Уменьшить карту">−</button><button data-zoom="reset" aria-label="Вернуть масштаб">⌖</button></div>
     <div class="map-field-chip">${esc(field.name)}<small>${fmt(field.area)} га</small></div><div class="map-caption">Схема поля · демонстрационные данные</div>
     <div class="map-bottom"><div class="map-legend"><span class="legend-item"><i></i>Контур поля</span>${tracks ? '<span class="legend-item"><i style="background:#9dbb79"></i>GPS-трек</span><span class="legend-item"><i class="yellow"></i>Перекрытия</span><span class="legend-item"><i class="red"></i>Пропуски</span>' : '<span class="legend-item">Условное расположение</span>'}</div><span class="map-scale">Схема</span></div>
@@ -318,16 +333,15 @@ function bindEditor() {
 function renderFields() {
   const filtered = fields.filter(f => `${f.name} ${f.id}`.toLowerCase().includes(fieldQuery.toLowerCase()));
   const f = getField(fieldSelected);
-  main.innerHTML = `${heading('Поля хозяйства', `${fields.length} полей · ${fmt(fields.reduce((sum,f) => sum + f.area,0))} га учётной площади`, `<div class="row">${button('Импорт полей','import-fields',false,'download')}${button('Нарисовать поле','draw-field',true,'plus')}</div>`)}<div class="fields-layout"><div class="field-list">${searchBox('field-search','Название или номер поля',fieldQuery)}${filtered.map(field => `<button class="field-card ${field.id === fieldSelected ? 'active' : ''}" data-field="${field.id}"><strong><span class="field-no">${String(field.id).padStart(2,'0')}</span>${esc(field.name)}</strong><small>Учётная площадь ${fmt(field.area)} га</small><div class="row">${cropTag(currentCrop(field))}<span>↗</span></div></button>`).join('') || '<p class="empty">Поля не найдены</p>'}</div>${mapMarkup(f,false,false)}</div><div class="culture-legend">Культуры сезона ${season}: ${crops.filter(Boolean).map(c => `<button data-crop-filter="${esc(c)}"><i style="background:${cropColors[c]}"></i>${c}</button>`).join('')}</div><p class="section-note">Схема показывает сценарий работы с контурами. Географическая подложка и импорт KML, KMZ, SHP будут подключены в рабочей версии.</p>`;
+  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar" aria-label="Поля хозяйства"><div class="field-sidebar-heading"><h1>Поля хозяйства</h1><p>${fields.length} полей · ${fmt(fields.reduce((sum,f) => sum + f.area,0))} га учётной площади</p><div class="field-sidebar-actions">${button('Импорт','import-fields')}${button('Экспорт','export-fields')}${button('Добавить','draw-field',true)}</div><div class="field-sidebar-search">${searchBox('field-search','Название или номер поля',fieldQuery)}</div></div><div class="field-list">${filtered.map(field => `<button class="field-card ${field.id === fieldSelected ? 'active' : ''}" data-field="${field.id}"><strong><span class="field-no">${String(field.id).padStart(2,'0')}</span>${esc(field.name)}</strong><small>Учётная площадь ${fmt(field.area)} га</small><div class="row">${cropTag(currentCrop(field))}<span>↗</span></div></button>`).join('') || '<p class="empty">Поля не найдены</p>'}</div></aside>${mapMarkup(f,false,false,false)}</div>`;
   bindMap();
   $$('[data-field]').forEach(b => b.onclick = () => { fieldSelected = Number(b.dataset.field); drawing = false; drawPoints = []; renderFields(); });
   $('#field-search').oninput = e => { fieldQuery = e.target.value; renderFields(); $('#field-search').focus(); };
-  $$('[data-crop-filter]').forEach(b => {
-    b.onmouseenter = () => $$('[data-field]').forEach(card => card.style.opacity = currentCrop(getField(card.dataset.field)) === b.dataset.cropFilter ? '1' : '.35');
-    b.onmouseleave = () => $$('[data-field]').forEach(card => card.style.opacity = '1');
-    b.onclick = () => { const match = fields.find(f => currentCrop(f) === b.dataset.cropFilter); if (match) { fieldSelected = match.id; renderFields(); } else toast('В этом сезоне полей с такой культурой нет'); };
-  });
   $('#import-fields').onclick = () => modal('Импорт полей', '<p>В рабочей версии контуры загружаются из KML, KMZ или SHP. В этом макете можно проверить выбор файла; обработка геометрии не выполняется.</p><label>Файл с контурами<input type="file" id="contour-file" accept=".kml,.kmz,.shp"></label><p id="file-state" class="section-note">Файл останется на вашем компьютере.</p>', () => $('#contour-file').onchange = e => { $('#file-state').textContent = e.target.files[0] ? `Выбран файл: ${e.target.files[0].name}. Для импорта потребуется рабочая версия сервиса.` : 'Файл не выбран'; });
+  $('#export-fields').onclick = () => {
+    const years = [...new Set(fields.flatMap(field => Object.keys(field.rotation)))].sort((a,b) => Number(a) - Number(b));
+    downloadCsv('Поля.csv', [['Номер поля','Название','Площадь, га',...years.map(year => `Культура ${year}`)], ...fields.map(field => [field.id,field.name,fmt(field.area),...years.map(year => field.rotation[year] || '')])]);
+  };
   $('#draw-field').onclick = () => { drawing = true; drawPoints = []; zoom = 1; renderFields(); };
   if (drawing) {
     $('#field-map').onclick = e => {
@@ -346,7 +360,7 @@ function renderFields() {
   }
 }
 function renderRotation() {
-  main.innerHTML = `${heading('Севооборот', 'История культур и план посевов — каждое поле в одной строке.', `<div class="row">${button('Сезоны','seasons',false,'layers')}${button('Выгрузить CSV','export-rotation',false,'download')}</div>`)}<div class="table-panel"><div class="panel-title"><h2>Культуры по сезонам</h2><span class="hint">Изменения сохраняются автоматически</span></div><div class="table-scroll"><table class="rotation-table"><thead><tr><th>Поле</th><th>Площадь, га</th>${visibleSeasons.map(y=>`<th>Сезон ${y}${String(y)===season ? ' · текущий' : ''}</th>`).join('')}</tr></thead><tbody>${fields.map(f=>`<tr><td><button class="table-button" data-rotation-field="${f.id}"><span class="field-no">${String(f.id).padStart(2,'0')}</span>${esc(f.name)}</button></td><td>${fmt(f.area)}</td>${visibleSeasons.map(y=>`<td><select data-rotation="${f.id}:${y}" aria-label="${esc(f.name)}, культура ${y}" style="background:${cropColors[f.rotation[y] || '']}">${options(crops,f.rotation[y] || '')}</select></td>`).join('')}</tr>`).join('')}</tbody></table></div></div><p class="section-note">Культура автоматически подставляется в операции и отчёты выбранного сезона. Пустая ячейка означает, что культура не назначена.</p><div class="culture-legend">${crops.filter(Boolean).map(c=>`<span class="legend-item"><i style="background:${cropColors[c]}"></i>${c}</span>`).join('')}</div>`;
+  main.innerHTML = `${heading('Севооборот', 'История культур и план посевов — каждое поле в одной строке.', `<div class="row">${button('Сезоны','seasons',false,'layers')}${button('Скачать','export-rotation',false,'download')}</div>`)}<div class="table-panel"><div class="panel-title"><h2>Культуры по сезонам</h2><span class="hint">Изменения сохраняются автоматически</span></div><div class="table-scroll"><table class="rotation-table"><thead><tr><th>Поле</th><th>Площадь, га</th>${visibleSeasons.map(y=>`<th>Сезон ${y}${String(y)===season ? ' · текущий' : ''}</th>`).join('')}</tr></thead><tbody>${fields.map(f=>`<tr><td><button class="table-button" data-rotation-field="${f.id}"><span class="field-no">${String(f.id).padStart(2,'0')}</span>${esc(f.name)}</button></td><td>${fmt(f.area)}</td>${visibleSeasons.map(y=>`<td><select data-rotation="${f.id}:${y}" aria-label="${esc(f.name)}, культура ${y}" style="background:${cropColors[f.rotation[y] || '']}">${options(crops,f.rotation[y] || '')}</select></td>`).join('')}</tr>`).join('')}</tbody></table></div></div><p class="section-note">Культура автоматически подставляется в операции и отчёты выбранного сезона. Пустая ячейка означает, что культура не назначена.</p><div class="culture-legend">${crops.filter(Boolean).map(c=>`<span class="legend-item"><i style="background:${cropColors[c]}"></i>${c}</span>`).join('')}</div>`;
   $$('[data-rotation]').forEach(select => select.onchange = e => { const [id,year] = select.dataset.rotation.split(':'); getField(id).rotation[year] = e.target.value; select.style.background = cropColors[e.target.value]; persist(); toast('Культура сохранена и обновлена в операциях'); });
   $$('[data-rotation-field]').forEach(b=>b.onclick=()=>{fieldSelected=Number(b.dataset.rotationField);location.hash='fields';});
   $('#seasons').onclick = () => modal('Отображаемые сезоны', `<p>Выберите годы для таблицы и выгрузки.</p>${[2024,2025,2026,2027].map(y=>`<label class="choice"><input type="checkbox" name="visible-season" value="${y}" ${visibleSeasons.includes(y)?'checked':''}>${y}</label>`).join('')}<div class="actions">${button('Применить','apply-seasons',true)}</div>`,()=>$('#apply-seasons').onclick=()=>{const years=$$('[name="visible-season"]:checked').map(i=>Number(i.value));if(!years.length)return toast('Выберите хотя бы один сезон');visibleSeasons=years;$('#dialog').close();renderRotation();});
@@ -536,7 +550,6 @@ function openMachinePicker() {
     };
   });
 }
-$('#global-season').onchange=e=>{season=e.target.value;initDraft();render();};
 $('#help').onclick=()=>modal('О макете Аврора Агро','<p>Кликабельный MVP по описанию «Аналог Гектеры». Основной путь: выберите работу → запустите расчёт → подтвердите площадь → добавьте материал → подтвердите работу.</p><p>Данные, схема полей и расчёты демонстрационные. Подключения к GPS, географического расчёта и серверного хранения нет. Изменения сохраняются только в этом браузере.</p><p>Демо-работы доступны за 30 сентября и 1 октября 2026 года. Технику можно переносить из демонстрационного корневого проекта и менять её тип, севооборот — редактировать.</p><div class="actions">'+button('Сбросить демо-данные','reset-demo')+'</div>',()=>$('#reset-demo').onclick=()=>{works=structuredClone(initialWorks);try{localStorage.removeItem('aurora-agro-demo-v1');}catch{}$('#dialog').close();location.reload();});
 function pageFromHash() {
   const target = location.hash.slice(1);
