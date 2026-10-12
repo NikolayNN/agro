@@ -91,6 +91,9 @@ let projectMachines = structuredClone(AuroraFleet.initialProjectMachines);
 try {
   const saved = JSON.parse(localStorage.getItem('aurora-agro-demo-v1') || 'null');
   if (saved?.works && Array.isArray(saved.works) && saved.works.length === initialWorks.length) works = saved.works;
+  if (Array.isArray(saved?.addedFields)) saved.addedFields.forEach(f => {
+    if (Number.isSafeInteger(f.id) && f.id > 0 && !fields.some(existing=>existing.id===f.id) && typeof f.name==='string' && Array.isArray(f.contour) && f.contour.length>=3 && f.contour.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))) fields.push({id:f.id,name:f.name,area:0,rotation:{},contour:f.contour,exclusions:Array.isArray(f.exclusions) ? f.exclusions.filter(points=>Array.isArray(points) && points.length>=3 && points.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))) : [],exclusionNames:Array.isArray(f.exclusionNames) ? f.exclusionNames.map((name,i)=>typeof name==='string' && name.trim() ? name.trim() : 'Участок '+(i+1)) : []});
+  });
   if (saved?.rotation) fields.forEach(f => { if (saved.rotation[f.id]) f.rotation = saved.rotation[f.id]; });
   if (Array.isArray(saved?.projectMachines) && saved.projectMachines.length >= AuroraFleet.initialProjectMachines.length) projectMachines = AuroraFleet.normalizeProjectMachines(saved.projectMachines);
 } catch { /* В приватном режиме макет продолжает работать без сохранения. */ }
@@ -100,7 +103,7 @@ let page = 'operations', season = '2026', date = '2026-10-01', status = 'pending
 let draft = null, result = null, areaMode = 'calculated', manualArea = '', fieldSelected = 12, zoom = 1;
 let workQuery = '', fieldQuery = '', reportKind = 'director', reportDateFrom = '2026-10-01', reportDateTo = '2026-10-01';
 let reportGroup = 'field', reportMaterial = true, reportOverlap = false, visibleSeasons = [2024, 2025, 2026];
-let drawing = false, drawPoints = [];
+let drawing = false, drawPoints = [], mapBasemap = 'scheme';
 const main = $('#main');
 const mockupVersion = window.AURORA_MOCKUP_VERSION || 'локально';
 $('#prototype-version').textContent = `MVP · ${mockupVersion}`;
@@ -138,7 +141,7 @@ const currentCrop = (f, year = season) => f.rotation[year] || '';
 const cropTag = crop => crop ? `<span class="crop"><i style="background:${cropInks[crop]}"></i>${esc(crop)}</span>` : '<span class="hint">Не назначена</span>';
 const options = (values, selectedValue) => values.map(v => `<option value="${esc(v)}" ${String(v) === String(selectedValue) ? 'selected' : ''}>${esc(v || 'Не назначена')}</option>`).join('');
 function persist() {
-  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ works, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])), projectMachines })); }
+  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ works, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])), projectMachines, addedFields: fields.filter(f=>f.contour) })); }
   catch { toast('Изменения действуют в текущей вкладке: сохранение браузером недоступно.'); }
 }
 let toastTimer;
@@ -178,24 +181,55 @@ function render() {
 function mapMarkup(field, calculated = false, tracks = true, showTitle = true) {
   const trackLines = Array.from({ length: 21 }, (_, i) => { const x = 180 + i * 15; return `<path d="M${x} 145V422"/>`; }).join('');
   const turns = Array.from({ length: 20 }, (_, i) => { const x = 180 + i * 15, y = i % 2 ? 145 : 422; return `<path d="M${x} ${y}Q${x + 7.5} ${y + (i % 2 ? -17 : 17)} ${x + 15} ${y}"/>`; }).join('');
-  return `<div class="map-panel ${drawing ? 'drawing' : ''}">
+  return `<div class="map-panel basemap-${mapBasemap} ${drawing ? 'drawing' : ''}">
     <svg class="map-art ${calculated ? 'calculated' : ''}" id="field-map" viewBox="0 0 700 560" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Демонстрационная схема поля ${esc(field.name)}${tracks ? ' и GPS-трека' : ''}">
-      <defs><pattern id="rows" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(15)"><rect width="7" height="7" fill="#b4c095"/><path d="M0 0V7" stroke="#859a6e" stroke-width="2" opacity=".28"/></pattern><pattern id="rows2" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(-22)"><rect width="9" height="9" fill="#c6bd8b"/><path d="M0 0V9" stroke="#9e9663" stroke-width="2" opacity=".27"/></pattern><pattern id="trees" patternUnits="userSpaceOnUse" width="22" height="25"><rect width="22" height="25" fill="#789273"/><circle cx="5" cy="7" r="9" fill="#627e60"/><circle cx="19" cy="22" r="8" fill="#869e78"/><circle cx="17" cy="8" r="5" fill="#547452" opacity=".65"/></pattern><clipPath id="field-clip"><path d="M161 125 503 102 541 347 439 451 195 461 142 333Z"/></clipPath><filter id="texture"><feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".09"/></feComponentTransfer><feBlend in="SourceGraphic" mode="multiply"/></filter></defs>
+      <defs><pattern id="rows" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(15)"><rect width="7" height="7" fill="#b4c095"/><path d="M0 0V7" stroke="#859a6e" stroke-width="2" opacity=".28"/></pattern><pattern id="rows2" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(-22)"><rect width="9" height="9" fill="#c6bd8b"/><path d="M0 0V9" stroke="#9e9663" stroke-width="2" opacity=".27"/></pattern><pattern id="trees" patternUnits="userSpaceOnUse" width="22" height="25"><rect width="22" height="25" fill="#789273"/><circle cx="5" cy="7" r="9" fill="#627e60"/><circle cx="19" cy="22" r="8" fill="#869e78"/><circle cx="17" cy="8" r="5" fill="#547452" opacity=".65"/></pattern><clipPath id="field-clip"><path d="M161 125 503 102 541 347 439 451 195 461 142 333Z"/></clipPath><filter id="texture"><feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".09"/></feComponentTransfer><feBlend in="SourceGraphic" mode="multiply"/></filter><filter id="satellite-texture" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".035 .08" numOctaves="4" seed="9" result="noise"/><feColorMatrix in="noise" type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope=".65" intercept=".1"/><feFuncG type="linear" slope=".7" intercept=".13"/><feFuncB type="linear" slope=".5" intercept=".06"/></feComponentTransfer><feBlend in="SourceGraphic" mode="multiply"/></filter></defs>
       <g id="map-world" transform="translate(350 280) scale(${zoom}) translate(-350 -280)">
-        <rect width="700" height="560" fill="#c7d0ac"/><g filter="url(#texture)"><path d="M0 0H328L305 76 120 91 90 262 0 240Z" fill="url(#rows2)"/><path d="M353 0H700V176L559 162 535 65 330 76Z" fill="url(#rows)"/><path d="M0 273 90 286 117 451 79 560H0Z" fill="url(#trees)"/><path d="m548 191 152 6v291l-118-67-44-66Z" fill="url(#rows2)"/><path d="m166 486 288-8 92-85 41 71 113 54v42H118Z" fill="url(#rows)"/><path d="M161 125 503 102 541 347 439 451 195 461 142 333Z" fill="url(#rows)"/><path d="M115-10 132 48 103 162 117 293 142 463 101 570" fill="none" stroke="#81956c" stroke-width="28"/><path d="M115-10 132 48 103 162 117 293 142 463 101 570" fill="none" stroke="#e6dfbb" stroke-width="13"/><path d="M105 91 331 86 521 82 559 177 715 185" fill="none" stroke="#e1ddba" stroke-width="10"/><path d="m144 477 308-8 106-105 155 55" fill="none" stroke="#e4ddbc" stroke-width="11"/><path d="M536 0 546 50 594 73 627 131 670 143 710 113" fill="none" stroke="#96b5aa" stroke-width="19"/><path d="M0 71 68 93 80 161 55 207 0 196Z" fill="url(#trees)"/><path d="m562 464 70 12 68 42v42H533Z" fill="url(#trees)"/></g>
+        <rect width="700" height="560" fill="#c7d0ac"/><g class="map-landscape" filter="url(#texture)"><path d="M0 0H328L305 76 120 91 90 262 0 240Z" fill="url(#rows2)"/><path d="M353 0H700V176L559 162 535 65 330 76Z" fill="url(#rows)"/><path d="M0 273 90 286 117 451 79 560H0Z" fill="url(#trees)"/><path d="m548 191 152 6v291l-118-67-44-66Z" fill="url(#rows2)"/><path d="m166 486 288-8 92-85 41 71 113 54v42H118Z" fill="url(#rows)"/><path d="M161 125 503 102 541 347 439 451 195 461 142 333Z" fill="url(#rows)"/><path d="M115-10 132 48 103 162 117 293 142 463 101 570" fill="none" stroke="#81956c" stroke-width="28"/><path d="M115-10 132 48 103 162 117 293 142 463 101 570" fill="none" stroke="#e6dfbb" stroke-width="13"/><path d="M105 91 331 86 521 82 559 177 715 185" fill="none" stroke="#e1ddba" stroke-width="10"/><path d="m144 477 308-8 106-105 155 55" fill="none" stroke="#e4ddbc" stroke-width="11"/><path d="M536 0 546 50 594 73 627 131 670 143 710 113" fill="none" stroke="#96b5aa" stroke-width="19"/><path d="M0 71 68 93 80 161 55 207 0 196Z" fill="url(#trees)"/><path d="m562 464 70 12 68 42v42H533Z" fill="url(#trees)"/></g>
         <path d="M161 125 503 102 541 347 439 451 195 461 142 333Z" fill="#6d984920" stroke="#f1f9d6" stroke-width="5"/><path d="M161 125 503 102 541 347 439 451 195 461 142 333Z" fill="none" stroke="#3c713b" stroke-width="2"/>
         ${tracks ? `<g clip-path="url(#field-clip)"><g class="coverage-layer"><path d="M173 139H499V430H173Z" fill="#86b957" opacity=".5"/><path d="M197 150V418M377 147V426" stroke="#e7b354" stroke-width="13" opacity=".85"/><path d="m496 109 31 144-24 128-17-249Z" fill="#d58d63" opacity=".8"/></g><g class="track-layer" stroke="#f5f8ce" fill="none" stroke-width="2.3">${trackLines}${turns}</g><path d="M180 148v104" fill="none" stroke="#285c3e" stroke-width="4"/><circle cx="180" cy="251" r="8" fill="#fff"/><circle cx="180" cy="251" r="4" fill="#285c3e"/></g>` : ''}
         <text class="map-label" x="595" y="310">№ 08</text><text class="map-label" x="341" y="530">№ 21</text>
-      </g><g id="draw-layer"></g>
+      <g id="draw-layer">${!drawing && field.contour ? `<polygon points="${field.contour.map(p=>p.join(',')).join(' ')}" fill="#21684844" stroke="#216848" stroke-width="3"/>${(field.exclusions || []).map(points=>`<polygon points="${points.map(p=>p.join(',')).join(' ')}" fill="#d58d6355" stroke="#ae5d22" stroke-width="3"/>`).join('')}` : ''}</g></g>
     </svg>
     ${showTitle ? `<div class="map-title"><span class="field-symbol">${icon('fields')}</span><div><strong>№ ${field.id} · ${esc(field.name)}</strong><small>${fmt(field.area)} га · ${esc(currentCrop(field) || 'Культура не назначена')}</small></div></div>` : ''}
-    <div class="map-tools"><button data-zoom="in" aria-label="Увеличить карту">+</button><button data-zoom="out" aria-label="Уменьшить карту">−</button><button data-zoom="reset" aria-label="Вернуть масштаб">⌖</button></div>
-    <div class="map-field-chip">${esc(field.name)}<small>${fmt(field.area)} га</small></div><div class="map-caption">Схема поля · демонстрационные данные</div>
-    <div class="map-bottom"><div class="map-legend"><span class="legend-item"><i></i>Контур поля</span>${tracks ? '<span class="legend-item"><i style="background:#9dbb79"></i>GPS-трек</span><span class="legend-item"><i class="yellow"></i>Перекрытия</span><span class="legend-item"><i class="red"></i>Пропуски</span>' : '<span class="legend-item">Условное расположение</span>'}</div><span class="map-scale">Схема</span></div>
-    ${drawing ? '<div class="drawing-toolbar"><p id="draw-hint">Отметьте углы на схеме (не менее трёх). Контур не является географическими данными.</p><div class="row"><button class="btn primary" id="finish-draw">Замкнуть контур</button><button class="btn" id="cancel-draw">Отмена</button></div></div>' : ''}
+    ${drawing ? '<div class="map-history"><button class="btn" type="button" id="undo-draw" aria-label="Отменить последнее действие" disabled>↶ Назад</button><button class="btn" type="button" id="redo-draw" aria-label="Повторить действие" disabled>Вперёд ↷</button></div>' : ''}
+    <label class="map-basemap">${icon('layers')}<select id="map-basemap" aria-label="Подложка карты"><option value="scheme" ${mapBasemap==='scheme'?'selected':''}>Схема</option><option value="hybrid" ${mapBasemap==='hybrid'?'selected':''}>Гибрид</option><option value="satellite" ${mapBasemap==='satellite'?'selected':''}>Спутник</option></select></label>
+    <div class="map-tools"><button data-zoom="in" aria-label="Увеличить карту">+</button><button data-zoom="out" aria-label="Уменьшить карту">−</button><button data-zoom="reset" aria-label="Вернуть масштаб">⌖</button><button type="button" class="map-fullscreen-toggle" aria-label="Развернуть карту на весь экран" title="Развернуть карту на весь экран" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg></button></div>
+    <div class="map-field-chip" ${drawing ? 'hidden' : ''}>${esc(field.name)}<small>${field.contour ? 'Площадь не рассчитана' : `${fmt(field.area)} га`}</small></div>
+    <div class="map-bottom">${tracks ? `<div class="map-legend"><span class="legend-item"><i></i>Контур поля</span>${tracks ? '<span class="legend-item"><i style="background:#9dbb79"></i>GPS-трек</span><span class="legend-item"><i class="yellow"></i>Перекрытия</span><span class="legend-item"><i class="red"></i>Пропуски</span>' : '<span class="legend-item">Условное расположение</span>'}</div>` : ''}<span class="map-scale">Схема</span></div>
+
   </div>`;
 }
 function bindMap() {
+  const fullscreenButton = $('.map-fullscreen-toggle');
+  const mapPanel = fullscreenButton.closest('.map-panel');
+  const syncFullscreen = () => {
+    const expanded = document.fullscreenElement === mapPanel || mapPanel.classList.contains('map-fullscreen-fallback');
+    fullscreenButton.setAttribute('aria-pressed',String(expanded));
+    fullscreenButton.setAttribute('aria-label',expanded ? 'Выйти из полноэкранного режима' : 'Развернуть карту на весь экран');
+    fullscreenButton.title = expanded ? 'Выйти из полноэкранного режима' : 'Развернуть карту на весь экран';
+  };
+  fullscreenButton.onclick = async () => {
+    if (document.fullscreenElement === mapPanel) await document.exitFullscreen();
+    else if (mapPanel.classList.contains('map-fullscreen-fallback')) mapPanel.classList.remove('map-fullscreen-fallback');
+    else {
+      try { await mapPanel.requestFullscreen(); }
+      catch { mapPanel.classList.add('map-fullscreen-fallback'); }
+    }
+    syncFullscreen();
+  };
+  document.onfullscreenchange = syncFullscreen;
+  document.addEventListener('keydown', function exitMapFullscreen(e) {
+    if (!mapPanel.isConnected) { document.removeEventListener('keydown',exitMapFullscreen); return; }
+    if(e.key === 'Escape') { mapPanel.classList.remove('map-fullscreen-fallback'); syncFullscreen(); }
+  });
+  syncFullscreen();
+  $('#map-basemap').onchange = e => {
+    const panel = e.target.closest('.map-panel');
+    panel.classList.remove(`basemap-${mapBasemap}`);
+    mapBasemap = e.target.value;
+    panel.classList.add(`basemap-${mapBasemap}`);
+  };
   $$('[data-zoom]').forEach(b => b.onclick = () => {
     zoom = b.dataset.zoom === 'reset' ? 1 : Math.min(2, Math.max(.7, zoom + (b.dataset.zoom === 'in' ? .15 : -.15)));
     $('#map-world').setAttribute('transform', `translate(350 280) scale(${zoom}) translate(-350 -280)`);
@@ -331,9 +365,10 @@ function bindEditor() {
   if ($('#reject')) $('#reject').onclick = () => { currentWork().status = 'rejected'; persist(); updateNav(); renderOperations(); toast('Работа отклонена. Вернуть её можно во вкладке «Все операции».'); };
 }
 function renderFields() {
+  if (drawing) { renderFieldDrawing(); return; }
   const filtered = fields.filter(f => `${f.name} ${f.id}`.toLowerCase().includes(fieldQuery.toLowerCase()));
   const f = getField(fieldSelected);
-  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar" aria-label="Поля хозяйства"><div class="field-sidebar-heading"><h1>Поля хозяйства</h1><p>${fields.length} полей · ${fmt(fields.reduce((sum,f) => sum + f.area,0))} га учётной площади</p><div class="field-sidebar-actions">${button('Импорт','import-fields')}${button('Экспорт','export-fields')}${button('Добавить','draw-field',true)}</div><div class="field-sidebar-search">${searchBox('field-search','Название или номер поля',fieldQuery)}</div></div><div class="field-list">${filtered.map(field => `<button class="field-card ${field.id === fieldSelected ? 'active' : ''}" data-field="${field.id}"><strong><span class="field-no">${String(field.id).padStart(2,'0')}</span>${esc(field.name)}</strong><small>Учётная площадь ${fmt(field.area)} га</small><div class="row">${cropTag(currentCrop(field))}<span>↗</span></div></button>`).join('') || '<p class="empty">Поля не найдены</p>'}</div></aside>${mapMarkup(f,false,false,false)}</div>`;
+  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar" aria-label="Поля хозяйства"><div class="field-sidebar-heading"><h1>Поля хозяйства</h1><p>${fields.length} полей · ${fmt(fields.reduce((sum,f) => sum + f.area,0))} га</p><div class="field-sidebar-actions">${button('Импорт','import-fields')}${button('Экспорт','export-fields')}${button('Добавить','draw-field',true)}</div><div class="field-sidebar-search">${searchBox('field-search','Название или номер поля',fieldQuery)}</div></div><div class="field-list">${filtered.map(field => `<button class="field-card ${field.id === fieldSelected ? 'active' : ''}" data-field="${field.id}"><strong><span class="field-no">${String(field.id).padStart(2,'0')}</span>${esc(field.name)}</strong><small>${field.contour ? 'Площадь не рассчитана' : `Учётная площадь ${fmt(field.area)} га`}</small><div class="row">${cropTag(currentCrop(field))}<span>↗</span></div></button>`).join('') || '<p class="empty">Поля не найдены</p>'}</div></aside>${mapMarkup(f,false,false,false)}</div>`;
   bindMap();
   $$('[data-field]').forEach(b => b.onclick = () => { fieldSelected = Number(b.dataset.field); drawing = false; drawPoints = []; renderFields(); });
   $('#field-search').oninput = e => { fieldQuery = e.target.value; renderFields(); $('#field-search').focus(); };
@@ -343,22 +378,168 @@ function renderFields() {
     downloadCsv('Поля.csv', [['Номер поля','Название','Площадь, га',...years.map(year => `Культура ${year}`)], ...fields.map(field => [field.id,field.name,fmt(field.area),...years.map(year => field.rotation[year] || '')])]);
   };
   $('#draw-field').onclick = () => { drawing = true; drawPoints = []; zoom = 1; renderFields(); };
-  if (drawing) {
-    $('#field-map').onclick = e => {
-      const svg = $('#field-map'), p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
-      const point = p.matrixTransform(svg.getScreenCTM().inverse()); drawPoints.push([Math.round(point.x),Math.round(point.y)]);
-      $('#draw-layer').innerHTML = `<polyline points="${drawPoints.map(p=>p.join(',')).join(' ')}" fill="#21684822" stroke="#216848" stroke-width="3"/>${drawPoints.map(([x,y])=>`<circle class="draw-point" cx="${x}" cy="${y}" r="5"/>`).join('')}`;
-      $('#draw-hint').textContent = `Отмечено точек: ${drawPoints.length}. ${drawPoints.length >= 3 ? 'Можно замкнуть контур.' : 'Добавьте ещё точки.'}`;
-    };
-    $('#cancel-draw').onclick = () => { drawing = false; renderFields(); };
-    $('#finish-draw').onclick = () => {
-      if (drawPoints.length < 3) return toast('Для контура нужны хотя бы три точки');
-      $('#draw-layer').innerHTML = `<polygon points="${drawPoints.map(p=>p.join(',')).join(' ')}" fill="#21684844" stroke="#216848" stroke-width="3"/>`;
-      $('#draw-hint').textContent = 'Демо-контур замкнут. Географическая площадь не рассчитывается; поле не добавлено в справочник.';
-      $('#field-map').onclick = null; $('#finish-draw').disabled = true;
-    };
-  }
 }
+
+
+function polygonArea(points) {
+  return points.length < 3 ? 0 : Math.abs(points.reduce((sum,p,i)=>{const next=points[(i+1)%points.length];return sum+p[0]*next[1]-next[0]*p[1];},0))/2000;
+}
+function pointInPolygon([x,y], points) {
+  let inside=false;
+  for(let i=0,j=points.length-1;i<points.length;j=i++) {
+    const [xi,yi]=points[i], [xj,yj]=points[j];
+    if((yi>y)!==(yj>y) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside;
+  }
+  return inside;
+}
+function polygonEdgesIntersect(a,b, self=false) {
+  const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  const on=(p,q,r)=>cross(p,q,r)===0 && r[0]>=Math.min(p[0],q[0]) && r[0]<=Math.max(p[0],q[0]) && r[1]>=Math.min(p[1],q[1]) && r[1]<=Math.max(p[1],q[1]);
+  for(let i=0;i<a.length;i++) for(let j=0;j<b.length;j++) {
+    if(self && (i===j || (i+1)%a.length===j || (j+1)%a.length===i)) continue;
+    const p=a[i],q=a[(i+1)%a.length],r=b[j],t=b[(j+1)%b.length];
+    if((cross(p,q,r)*cross(p,q,t)<0 && cross(r,t,p)*cross(r,t,q)<0) || on(p,q,r) || on(p,q,t) || on(r,t,p) || on(r,t,q)) return true;
+  }
+  return false;
+}
+function exclusionError(contour, exclusions) {
+  for(let i=0;i<exclusions.length;i++) {
+    const points=exclusions[i], label='Участок '+(i+1)+': ';
+    if(points.length<3 || !polygonArea(points)) return label+'отметьте не менее трёх точек вокруг площади.';
+    if(polygonEdgesIntersect(points,points,true)) return label+'границы не должны пересекаться.';
+    if(!points.every(p=>pointInPolygon(p,contour)) || polygonEdgesIntersect(points,contour)) return label+'разместите участок внутри поля.';
+    for(let j=0;j<i;j++) if(polygonEdgesIntersect(points,exclusions[j]) || pointInPolygon(points[0],exclusions[j]) || pointInPolygon(exclusions[j][0],points)) return label+'необрабатываемые участки не должны пересекаться.';
+  }
+  return '';
+}
+function renderFieldDrawing() {
+  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar field-drawing" aria-label="Добавление поля"><div class="field-sidebar-heading"><h1>Добавить поле</h1><p>Нарисуйте контур и укажите данные поля.</p></div><form id="new-field-form" class="field-drawing-form"><label>Номер поля<input id="new-field-number" type="number" min="1" step="1" required placeholder="Например, 36"></label><label>Название поля<input id="new-field-name" required maxlength="100" placeholder="Например, Южное"></label><div class="field-drawing-guide"><h2>Контуры</h2><p>Нажимайте на карте, чтобы отметить углы поля. Перетаскивайте точки для изменения контура. Нужно не менее трёх точек.</p><button class="field-drawing-area field-contour-pick" type="button" id="edit-field-contour" aria-pressed="true"><span>Обрабатываемая площадь</span><strong id="draw-area" aria-live="polite">0,00 га</strong><span class="area-detail"><span>Общая</span><span id="draw-total-area">0,00 га</span></span><span class="area-detail"><span>Необрабатываемая</span><span id="draw-excluded-area">0,00 га</span></span></button><div class="field-exclusions"><h2>Необрабатываемые участки</h2><div id="exclusion-list"></div><div class="exclusion-actions"><button class="btn" type="button" id="add-exclusion">Добавить участок</button></div></div></div><p id="draw-error" class="field-drawing-error" role="alert"></p><div class="field-drawing-actions"><button class="btn" type="button" id="cancel-draw">Отмена</button><button class="btn primary" type="submit" id="finish-draw" disabled>Сохранить</button></div></form></aside>${mapMarkup(getField(fieldSelected),false,false,false)}</div>`;
+
+  const updateSaveButton = () => {
+    const numberInput = $('#new-field-number');
+    $('#finish-draw').disabled = !numberInput.value.trim() || !numberInput.validity.valid || !$('#new-field-name').value.trim();
+  };
+  $('#new-field-number').oninput = updateSaveButton;
+  $('#new-field-name').oninput = updateSaveButton;
+  updateSaveButton();
+  bindMap();
+  const drawHistory = [], redoHistory = [];
+  const recordHistory = state => { drawHistory.push(state); redoHistory.length=0; };
+  let exclusions = [], exclusionNames = [], nextExclusionNumber = 1, activeContour = -1;
+  const activePoints = () => activeContour < 0 ? drawPoints : exclusions[activeContour];
+  const snapshot = () => structuredClone({ contour: drawPoints, exclusions, exclusionNames, nextExclusionNumber, activeContour });
+  const restore = state => { drawPoints=state.contour; exclusions=state.exclusions; exclusionNames=state.exclusionNames; nextExclusionNumber=state.nextExclusionNumber; activeContour=state.activeContour; };
+  const updateContour = () => {
+    const shape=(points,index)=>'<'+(points.length>=3?'polygon':'polyline')+' points="'+points.map(p=>p.join(',')).join(' ')+'" fill="'+(index<0?'#21684822':'#d58d6355')+'" stroke="'+(index<0?'#216848':'#ae5d22')+'" stroke-width="3"/>';
+    $('#draw-layer').innerHTML = shape(drawPoints,-1)+exclusions.map(shape).join('')+activePoints().map(([x,y],index)=>'<circle class="draw-point" data-vertex="'+index+'" cx="'+x+'" cy="'+y+'" r="5"/>').join('');
+    const total=polygonArea(drawPoints), excluded=exclusions.reduce((sum,p)=>sum+polygonArea(p),0);
+    $('#draw-area').textContent = fmt(Math.max(0,total-excluded))+' га';
+    $('#draw-total-area').textContent = fmt(total)+' га';
+    $('#draw-excluded-area').textContent = fmt(excluded)+' га';
+    $('#edit-field-contour').setAttribute('aria-pressed', String(activeContour<0));
+    $('#exclusion-list').innerHTML = exclusions.map((points,i)=>'<div class="exclusion-item '+(activeContour===i?'active':'')+'"><input class="exclusion-name-input" data-exclusion-name="'+i+'" maxlength="100" aria-label="Название участка '+(i+1)+'" value="'+esc(exclusionNames[i])+'"><button type="button" class="exclusion-remove" data-remove-exclusion="'+i+'" aria-label="Удалить участок '+(i+1)+'">×</button><button type="button" class="exclusion-pick" data-exclusion="'+i+'" aria-pressed="'+(activeContour===i)+'"><strong>'+fmt(polygonArea(points))+' га</strong></button></div>').join('');
+    $('#add-exclusion').disabled = drawPoints.length<3 || !polygonArea(drawPoints) || exclusions.some(p=>p.length<3);
+    $('#undo-draw').disabled = !drawHistory.length;
+    $('#redo-draw').disabled = !redoHistory.length;
+    $('#draw-error').textContent = '';
+  };
+  const svg = $('#field-map');
+  let pointer = null;
+  const mapPoint = e => {
+    const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    return p.matrixTransform($('#map-world').getScreenCTM().inverse());
+  };
+  svg.onpointerdown = e => {
+    if (pointer || !e.isPrimary || e.button !== 0) return;
+    const vertex = e.target.closest('[data-vertex]');
+    const index = vertex ? Number(vertex.dataset.vertex) : null;
+    const start = mapPoint(e);
+    pointer = { id: e.pointerId, index, start, original: index === null ? null : [...activePoints()[index]], x: e.clientX, y: e.clientY, moved: false, snapshot: snapshot() };
+    svg.setPointerCapture(e.pointerId);
+    svg.classList.toggle('dragging-vertex', index !== null);
+    e.preventDefault();
+  };
+  svg.onpointermove = e => {
+    if (!pointer || e.pointerId !== pointer.id) return;
+    if (Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y) > 4) pointer.moved = true;
+    if (pointer.index === null) return;
+    const p = mapPoint(e);
+    activePoints()[pointer.index] = [Math.round(pointer.original[0]+p.x-pointer.start.x),Math.round(pointer.original[1]+p.y-pointer.start.y)];
+    updateContour();
+  };
+  const finishPointer = (e, cancelled = false) => {
+    if (!pointer || e.pointerId !== pointer.id) return;
+    if (cancelled && pointer.index !== null) drawPoints[pointer.index] = pointer.original;
+    if (!cancelled && pointer.index === null && !pointer.moved) {
+      const p = mapPoint(e), next = [Math.round(p.x),Math.round(p.y)];
+      if (!activePoints().some(p=>p[0]===next[0] && p[1]===next[1])) activePoints().push(next);
+    }
+    if (!cancelled && JSON.stringify(snapshot()) !== JSON.stringify(pointer.snapshot)) recordHistory(pointer.snapshot);
+    const id = pointer.id; pointer = null;
+    svg.classList.remove('dragging-vertex');
+    if (svg.hasPointerCapture(id)) svg.releasePointerCapture(id);
+    updateContour();
+  };
+  svg.onpointerup = e => finishPointer(e);
+  svg.onpointercancel = e => finishPointer(e,true);
+  svg.onlostpointercapture = e => finishPointer(e,true);
+  $('#undo-draw').onclick = () => {
+    if (!drawHistory.length || pointer) return;
+    redoHistory.push(snapshot());
+    restore(drawHistory.pop());
+    updateContour();
+  };
+  $('#redo-draw').onclick = () => {
+    if (!redoHistory.length || pointer) return;
+    drawHistory.push(snapshot());
+    restore(redoHistory.pop());
+    updateContour();
+  };
+  $('#edit-field-contour').onclick = () => { if(pointer) return; activeContour=-1; updateContour(); };
+  $('#exclusion-list').onclick = e => {
+    if(pointer) return;
+    const remove=e.target.closest('[data-remove-exclusion]'), select=e.target.closest('[data-exclusion]');
+    if(remove) {
+      const index=Number(remove.dataset.removeExclusion);
+      recordHistory(snapshot()); exclusions.splice(index,1); exclusionNames.splice(index,1);
+      if(activeContour===index) activeContour=-1; else if(activeContour>index) activeContour--;
+    } else if(select) activeContour=Number(select.dataset.exclusion); else return;
+    updateContour();
+  };
+  $('#exclusion-list').onchange = e => {
+    const input=e.target.closest('[data-exclusion-name]');
+    if(!input || pointer) return;
+    const index=Number(input.dataset.exclusionName), previous=exclusionNames[index];
+    const name=input.value.trim() || previous;
+    if(name!==previous) { drawHistory.push(snapshot()); exclusionNames[index]=name; }
+    input.value=name;
+    $('#undo-draw').disabled=!drawHistory.length;
+    $('#redo-draw').disabled=!redoHistory.length;
+  };
+  $('#add-exclusion').onclick = () => {
+    if(pointer || $('#add-exclusion').disabled) return;
+    drawHistory.push(snapshot()); exclusions.push([]); exclusionNames.push('Участок '+nextExclusionNumber++); activeContour=exclusions.length-1; updateContour();
+  };
+  $('#cancel-draw').onclick = () => { drawing = false; drawPoints = []; renderFields(); };
+  $('#new-field-form').onsubmit = e => {
+    e.preventDefault();
+    const id = Number($('#new-field-number').value), name = $('#new-field-name').value.trim();
+    const fail = (message,input) => { $('#draw-error').textContent = message; if(input) $(input).focus(); };
+    if(!Number.isSafeInteger(id) || id<1) return fail('Введите положительный целый номер поля.','#new-field-number');
+    if(fields.some(f=>f.id===id)) return fail('Поле с таким номером уже существует.','#new-field-number');
+    if(!name) return fail('Введите название поля.','#new-field-name');
+    if(drawPoints.length<3) return fail('Отметьте хотя бы три точки на карте.');
+    const area=Math.abs(drawPoints.reduce((sum,p,i)=>{const n=drawPoints[(i+1)%drawPoints.length];return sum+p[0]*n[1]-n[0]*p[1];},0));
+    if(area<1) return fail('Контур должен охватывать площадь.');
+    if(polygonEdgesIntersect(drawPoints,drawPoints,true)) return fail('Границы поля не должны пересекаться.');
+    const invalid = exclusionError(drawPoints,exclusions);
+    if(invalid) return fail(invalid);
+    fields.push({id,name,area:0,rotation:{},contour:drawPoints.map(p=>[...p]),exclusions:structuredClone(exclusions),exclusionNames:[...exclusionNames]});
+    fieldSelected=id; fieldQuery=''; drawing=false; drawPoints=[]; persist(); renderFields(); toast('Поле «'+name+'» добавлено');
+  };
+  updateContour(); $('#new-field-number').focus();
+}
+
 function renderRotation() {
   main.innerHTML = `${heading('Севооборот', 'История культур и план посевов — каждое поле в одной строке.', `<div class="row">${button('Сезоны','seasons',false,'layers')}${button('Скачать','export-rotation',false,'download')}</div>`)}<div class="table-panel"><div class="panel-title"><h2>Культуры по сезонам</h2><span class="hint">Изменения сохраняются автоматически</span></div><div class="table-scroll"><table class="rotation-table"><thead><tr><th>Поле</th><th>Площадь, га</th>${visibleSeasons.map(y=>`<th>Сезон ${y}${String(y)===season ? ' · текущий' : ''}</th>`).join('')}</tr></thead><tbody>${fields.map(f=>`<tr><td><button class="table-button" data-rotation-field="${f.id}"><span class="field-no">${String(f.id).padStart(2,'0')}</span>${esc(f.name)}</button></td><td>${fmt(f.area)}</td>${visibleSeasons.map(y=>`<td><select data-rotation="${f.id}:${y}" aria-label="${esc(f.name)}, культура ${y}" style="background:${cropColors[f.rotation[y] || '']}">${options(crops,f.rotation[y] || '')}</select></td>`).join('')}</tr>`).join('')}</tbody></table></div></div><p class="section-note">Культура автоматически подставляется в операции и отчёты выбранного сезона. Пустая ячейка означает, что культура не назначена.</p><div class="culture-legend">${crops.filter(Boolean).map(c=>`<span class="legend-item"><i style="background:${cropColors[c]}"></i>${c}</span>`).join('')}</div>`;
   $$('[data-rotation]').forEach(select => select.onchange = e => { const [id,year] = select.dataset.rotation.split(':'); getField(id).rotation[year] = e.target.value; select.style.background = cropColors[e.target.value]; persist(); toast('Культура сохранена и обновлена в операциях'); });
