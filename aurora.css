@@ -350,3 +350,12 @@ dialog{background:var(--ds-surface-raised);color:var(--ds-fg);border-radius:var(
 .work-crop .icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;font-size:18px;line-height:1;color:var(--ds-brand-text)}
 .work-crop-label{color:var(--ds-fg-muted)}
 .work-crop strong{font-weight:600;color:var(--ds-fg);overflow-wrap:anywhere}
+
+.calendar-page.work-calendar{position:static;width:100%;max-width:1100px;padding:24px;box-shadow:none}
+.calendar-page .work-calendar-heading{margin-bottom:20px}
+.calendar-page .work-calendar-heading strong{font-size:20px}
+.calendar-page .work-calendar-grid{gap:8px}
+.calendar-page .work-calendar-day{height:110px;border:1px solid var(--ds-border);font-size:18px;gap:12px}
+.calendar-page .work-calendar-counts{font-size:16px;line-height:26px;gap:6px}
+.calendar-page .work-calendar-counts>span{padding:0 7px}
+@media(max-width:640px){.calendar-page.work-calendar{padding:12px}.calendar-page .work-calendar-grid{gap:3px}.calendar-page .work-calendar-day{height:80px}.calendar-page .work-calendar-counts{font-size:13px;gap:2px}.calendar-page .work-calendar-counts>span{padding:0 3px}}

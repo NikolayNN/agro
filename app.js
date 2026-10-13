@@ -239,9 +239,11 @@ function updateNav() {
   const editingMachine = machineFromEditRoute();
   const editingField = fieldFromEditRoute();
   const operation = operationFromRoute();
-  $('#breadcrumb').innerHTML = operation ? `<a href="#operations">Операции</a><span>/</span>Работа № ${String(operation.id).padStart(3,'0')}` : editingField ? `<a href="#fields">Поля</a><span>/</span>${esc(editingField.name)}<span>/</span>Редактирование` : editingMachine ? `<a href="#directory">Справочники</a><span>/</span><a href="#directory/machines">Техника</a><span>/</span>${esc(editingMachine.name)}` : directory ? `<a href="#directory">Справочники</a><span>/</span>${directory.title}` : titles[page];
-  document.title = `${operation ? `Работа № ${String(operation.id).padStart(3,'0')}` : editingField ? `Редактирование: ${editingField.name}` : editingMachine ? editingMachine.name : directory?.title || titles[page]} — Аврора Агро`;
-  $$('nav a').forEach(a => { const active = a.dataset.page === page || (a.dataset.page === 'operations' && !!operation) || (a.dataset.page === 'fields' && !!editingField) || (a.dataset.page === 'directory' && (!!directory || !!editingMachine)); a.classList.toggle('active', active); if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const dayRoute = /^operations\/day\/(\d{4}-\d{2}-\d{2})$/.exec(page);
+  const dayBreadcrumb = `<a href="#operations">Операции</a><span>/</span><a href="#operations/day/${operation?.date || date}">${(operation?.date || date).split('-').reverse().join('.')}</a>`;
+  $('#breadcrumb').innerHTML = operation ? `${dayBreadcrumb}<span>/</span>Работа № ${String(operation.id).padStart(3,'0')}` : dayRoute ? dayBreadcrumb : editingField ? `<a href="#fields">Поля</a><span>/</span>${esc(editingField.name)}<span>/</span>Редактирование` : editingMachine ? `<a href="#directory">Справочники</a><span>/</span><a href="#directory/machines">Техника</a><span>/</span>${esc(editingMachine.name)}` : directory ? `<a href="#directory">Справочники</a><span>/</span>${directory.title}` : titles[page];
+  document.title = `${operation ? `Работа № ${String(operation.id).padStart(3,'0')}` : editingField ? `Редактирование: ${editingField.name}` : editingMachine ? editingMachine.name : directory?.title || (dayRoute ? 'Полевые операции' : titles[page])} — Аврора Агро`;
+  $$('nav a').forEach(a => { const active = a.dataset.page === page || (a.dataset.page === 'operations' && (!!operation || !!dayRoute)) || (a.dataset.page === 'fields' && !!editingField) || (a.dataset.page === 'directory' && (!!directory || !!editingMachine)); a.classList.toggle('active', active); if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   $('#pending-count').textContent = works.filter(w => w.status === 'pending' && String(w.season) === season).length;
 }
 function operationFromRoute() {
@@ -249,15 +251,18 @@ function operationFromRoute() {
   return match ? works.find(work => work.id === Number(match[1])) : null;
 }
 function render() {
+  const dayRoute = /^operations\/day\/(\d{4}-\d{2}-\d{2})$/.exec(page);
+  if (dayRoute) date = dayRoute[1];
   const operation = operationFromRoute();
   main.classList.toggle('operation-page', !!operation);
   main.classList.toggle('fields-page', page === 'fields' || !!fieldFromEditRoute());
   updateNav();
-  if (operation) renderOperation(operation);
+  if (dayRoute) renderOperations();
+  else if (operation) renderOperation(operation);
   else if (fieldFromEditRoute()) renderFieldDrawing(fieldFromEditRoute());
   else if (machineFromEditRoute()) renderMachineEditorPage();
   else if (page.startsWith('directory/')) renderDirectoryPage();
-  else ({ operations: renderOperations, fields: renderFields, rotation: renderRotation, reports: renderReports, directory: renderDirectory })[page]();
+  else ({ operations: renderOperationsCalendar, fields: renderFields, rotation: renderRotation, reports: renderReports, directory: renderDirectory })[page]();
 }
 function mapMarkup(field, calculated = false, tracks = true, showTitle = true) {
   const trackLines = Array.from({ length: 21 }, (_, i) => { const x = 180 + i * 15; return `<path d="M${x} 145V422"/>`; }).join('');
@@ -336,17 +341,17 @@ function workCalendarMarkup(year,month) {
     return '<button type="button" class="work-calendar-day '+(day===date?'selected ':'')+(c?.pending?'has-pending':'')+'" data-calendar-date="'+day+'" aria-label="'+day.split('-').reverse().join('.')+description+'" '+(day===date?'aria-current="date"':'')+'><span>'+Number(day.slice(-2))+'</span>'+(c?'<small class="work-calendar-counts" aria-hidden="true">'+['pending','confirmed','rejected'].filter(key=>c[key]>0).map(key=>'<span class="'+key+'">'+c[key]+'</span>').join('')+'</small>':'')+'</button>';
   }).join('')+'</div><div class="work-calendar-key"><span class="work-calendar-counts"><span class="pending">Ждёт</span><span class="confirmed">Подтверждено</span><span class="rejected">Отклонено</span></span></div>';
 }
-function bindWorkCalendar() {
-  const calendar=$('#work-calendar'),trigger=$('#work-date');
-  let [year,month]=date.split('-').map(Number);month--;
-  const redraw=()=>{calendar.innerHTML=workCalendarMarkup(year,month);};
-  calendar.addEventListener('beforetoggle',event=>{if(event.newState==='open'){const rect=trigger.getBoundingClientRect();calendar.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-Math.min(440,window.innerWidth-16)-8))+'px';calendar.style.top=Math.max(8,Math.min(rect.bottom+8,window.innerHeight-500))+'px';redraw();}});
-  calendar.addEventListener('toggle',event=>trigger.setAttribute('aria-expanded',String(event.newState==='open')));
-  calendar.onclick=event=>{
-    const day=event.target.closest('[data-calendar-date]');
-    if(day){date=day.dataset.calendarDate;calendar.hidePopover();renderOperations();$('#work-date').focus();return;}
-    const nav=event.target.closest('[data-calendar-month]');
-    if(nav){const target=new Date(year,month+Number(nav.dataset.calendarMonth),1);year=target.getFullYear();month=target.getMonth();redraw();calendar.querySelector('[data-calendar-month="'+nav.dataset.calendarMonth+'"]').focus();}
+function renderOperationsCalendar() {
+  main.innerHTML = '<div class="page-heading"><div><h1>Операции</h1><p>Выберите день для просмотра полевых операций.</p></div></div><section id="work-calendar" class="work-calendar calendar-page" aria-label="Календарь работ"></section>';
+  const calendar = $('#work-calendar');
+  let [year,month] = date.split('-').map(Number); month--;
+  const redraw = () => { calendar.innerHTML = workCalendarMarkup(year,month); };
+  redraw();
+  calendar.onclick = event => {
+    const day = event.target.closest('[data-calendar-date]');
+    if (day) { location.hash = 'operations/day/'+day.dataset.calendarDate; return; }
+    const nav = event.target.closest('[data-calendar-month]');
+    if (nav) { const target = new Date(year,month+Number(nav.dataset.calendarMonth),1); year=target.getFullYear(); month=target.getMonth(); redraw(); }
   };
 }
 function workFilterMarkup(id, label, entries, selectedValue) {
@@ -426,10 +431,9 @@ function renderOperations() {
   const orderedColumns = workColumnOrder.map(key => workColumns.find(([id]) => id === key));
   const visibleColumns = orderedColumns.filter(([key]) => workVisibleColumns.includes(key));
   main.innerHTML = `${heading('Полевые операции', 'Выберите работу для просмотра трека и расчёта площади.', button('Обновить треки', 'sync', false, 'sync'))}
-    <div class="toolbar"><div class="row"><button type="button" id="work-date" class="btn work-date-trigger" popovertarget="work-calendar" aria-label="Дата работ" aria-expanded="false">${date.split('-').reverse().join('.')}${icon('operations')}</button><div id="work-calendar" class="work-calendar" popover aria-label="Календарь работ"></div>${workFilterMarkup('work-field','Поле',filterFields,workField)}${workFilterMarkup('work-crop','Культура',filterCrops,workCrop)}${workFilterMarkup('work-machine','Техника',filterMachines,workMachine)}${workFilterMarkup('work-driver','Механизатор',filterDrivers,workDriver)}${workFilterMarkup('work-status','Статус',[['pending','Ждёт расчёта'],['confirmed','Подтверждена'],['rejected','Отклонена']],status)}</div><details class="work-columns"><summary class="btn">Колонки</summary><div class="work-columns-menu">${orderedColumns.map(([key,title],index) => `<div class="work-column-row"><label><input type="checkbox" data-work-column="${key}" aria-label="${esc(title)}" ${workVisibleColumns.includes(key) ? 'checked' : ''} ${workVisibleColumns.length === 1 && workVisibleColumns.includes(key) ? 'disabled' : ''}>${title}</label><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="-1" aria-label="Выше: ${esc(title)}" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="1" aria-label="Ниже: ${esc(title)}" ${index === orderedColumns.length-1 ? 'disabled' : ''}>↓</button></div>`).join('')}<button type="button" class="btn subtle" id="reset-work-columns">По умолчанию</button></div></details></div>
+    <div class="toolbar"><div class="row">${workFilterMarkup('work-field','Поле',filterFields,workField)}${workFilterMarkup('work-crop','Культура',filterCrops,workCrop)}${workFilterMarkup('work-machine','Техника',filterMachines,workMachine)}${workFilterMarkup('work-driver','Механизатор',filterDrivers,workDriver)}${workFilterMarkup('work-status','Статус',[['pending','Ждёт расчёта'],['confirmed','Подтверждена'],['rejected','Отклонена']],status)}</div><details class="work-columns"><summary class="btn">Колонки</summary><div class="work-columns-menu">${orderedColumns.map(([key,title],index) => `<div class="work-column-row"><label><input type="checkbox" data-work-column="${key}" aria-label="${esc(title)}" ${workVisibleColumns.includes(key) ? 'checked' : ''} ${workVisibleColumns.length === 1 && workVisibleColumns.includes(key) ? 'disabled' : ''}>${title}</label><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="-1" aria-label="Выше: ${esc(title)}" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="1" aria-label="Ниже: ${esc(title)}" ${index === orderedColumns.length-1 ? 'disabled' : ''}>↓</button></div>`).join('')}<button type="button" class="btn subtle" id="reset-work-columns">По умолчанию</button></div></details></div>
     <section class="table-panel"><div class="table-scroll"><table><thead><tr>${visibleColumns.map(([,title]) => `<th>${title}</th>`).join('')}<th></th></tr></thead><tbody>${list.map(w => `<tr class="clickable" data-work="${w.id}">${visibleColumns.map(([key]) => `<td>${workTableCell(w,key)}</td>`).join('')}<td><button class="table-button" aria-label="Открыть работу ${esc(getField(w.field).name)}">${icon('arrow')}</button></td></tr>`).join('') || `<tr><td colspan="${visibleColumns.length+1}" class="empty">Работы не найдены</td></tr>`}</tbody></table></div></section>`;
   $('#sync').onclick = () => toast('Демо-треки актуальны. Подключение к Авроре GPS появится в рабочей версии.');
-  bindWorkCalendar();
   bindWorkFilters();
   const refreshColumns = selector => { saveWorkColumns(); renderOperations(); $('.work-columns').open = true; $(selector)?.focus(); };
   document.querySelectorAll('[data-work-column]').forEach(input => input.onchange = () => {
@@ -448,7 +452,7 @@ function renderOperations() {
 }
 function renderOperation(work) {
   if (selected !== work.id || !draft) { selected = work.id; initDraft(); }
-  main.innerHTML = `<div class="operation-layout"><aside class="operation-sidebar" aria-label="Расчёт операции"><div class="operation-back"><a class="btn subtle" href="#operations">← К списку работ</a></div><section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></aside>${mapMarkup(getField(work.field), !!result || work.status === 'confirmed')}</div>`;
+  main.innerHTML = `<div class="operation-layout"><aside class="operation-sidebar" aria-label="Расчёт операции"><div class="operation-back"><a class="btn subtle" href="#operations/day/${work.date}">← К списку работ</a></div><section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></aside>${mapMarkup(getField(work.field), !!result || work.status === 'confirmed')}</div>`;
   bindMap();
   bindEditor();
 }
@@ -1031,7 +1035,7 @@ function openMachinePicker() {
 $('#help').onclick=()=>modal('О макете Аврора Агро','<p>Кликабельный MVP по описанию «Аналог Гектеры». Основной путь: выберите работу → запустите расчёт → подтвердите площадь → добавьте материал → подтвердите работу.</p><p>Данные, схема полей и расчёты демонстрационные. Подключения к GPS, географического расчёта и серверного хранения нет. Изменения сохраняются только в этом браузере.</p><p>Демо-работы доступны за сегодня и вчера. Технику можно переносить из демонстрационного корневого проекта и менять её тип, севооборот — редактировать.</p><div class="actions">'+button('Сбросить демо-данные','reset-demo')+'</div>',()=>$('#reset-demo').onclick=()=>{works=structuredClone(initialWorks);try{localStorage.removeItem('aurora-agro-demo-v1');}catch{}$('#dialog').close();location.reload();});
 function pageFromHash() {
   const target = location.hash.slice(1);
-  return /^operations\/\d+$/.test(target) && works.some(work => target === `operations/${work.id}`) || ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || fields.some(field=>target===`fields/${field.id}/edit`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
+  return /^operations\/day\/\d{4}-\d{2}-\d{2}$/.test(target) || /^operations\/\d+$/.test(target) && works.some(work => target === `operations/${work.id}`) || ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || fields.some(field=>target===`fields/${field.id}/edit`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
 }
 window.addEventListener('hashchange',()=>{page=pageFromHash();drawing=false;drawPoints=[];render();window.scrollTo({top:0,behavior:'instant'});});
 page=pageFromHash();
