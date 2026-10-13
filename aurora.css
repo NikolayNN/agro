@@ -410,3 +410,21 @@ dialog{background:var(--ds-surface-raised);color:var(--ds-fg);border-radius:var(
 .column-drop-hint{padding:12px;text-align:center;color:var(--ds-fg-muted);font:var(--ds-type-caption);margin-top:auto;pointer-events:none}
 .column-dialog-actions{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--ds-border);padding-top:var(--ds-gap-lg);margin-top:var(--ds-gap-md)}
 @media(max-width:560px){.column-lists{gap:8px}.column-card{gap:2px;padding:4px}.column-dialog-actions{flex-wrap:wrap}}
+
+.operation-stepper{display:flex;align-items:center;gap:var(--ds-gap-sm);margin:0 0 var(--ds-gap-lg);padding:calc(var(--ds-focus-width) + var(--ds-focus-offset));list-style:none;min-width:0;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--ds-border-strong) var(--ds-surface)}
+.operation-stepper>li{display:flex;align-items:center;gap:var(--ds-gap-sm);flex:none;min-width:0}
+.operation-step{display:flex;align-items:center;gap:var(--ds-gap-sm);padding:4px;border-radius:var(--ds-radius-md)}
+.operation-step-number{display:inline-flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;border-radius:50%;border:var(--ds-border-width-strong) solid var(--ds-border-strong);color:var(--ds-fg-subtle);font:var(--ds-type-eyebrow)}
+.operation-step-label{font:var(--ds-type-ui);color:var(--ds-fg-muted);white-space:nowrap}
+.operation-step-connector{flex:none;width:32px;height:1px;background:var(--ds-border)}
+.operation-stepper [data-step-state="current"] .operation-step-number{background:var(--ds-brand);border-color:var(--ds-brand);color:var(--ds-on-brand)}
+.operation-stepper [data-step-state="current"] .operation-step-label{color:var(--ds-brand-text)}
+.operation-stepper [data-step-state="completed"] .operation-step-number{background:var(--ds-success-solid);border-color:var(--ds-success-solid);color:var(--ds-on-solid)}
+.operation-step-number .ds-symbol{font-size:var(--ds-icon-xs)}
+.operation-stepper [data-step-state="completed"] .operation-step-label{color:var(--ds-fg)}
+.operation-stepper [data-step-state="completed"] .operation-step-connector{background:var(--ds-success-line)}
+.operation-sidebar .operation-stepper,.operation-sidebar .operation-stepper>li,.operation-sidebar .operation-step{gap:4px}.operation-sidebar .operation-step{padding:2px}.operation-sidebar .operation-step-connector{width:8px}
+
+.operation-back{display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+.operation-options [role="option"][aria-disabled="true"]{color:var(--ds-fg-disabled);cursor:not-allowed;background:transparent;font-weight:400}

@@ -607,53 +607,84 @@ function openWorkColumns() {
 }
 function renderOperation(work) {
   if (selected !== work.id || !draft) { selected = work.id; initDraft(); }
-  main.innerHTML = `<div class="operation-layout"><aside class="operation-sidebar" aria-label="Расчёт операции"><div class="operation-back"><a class="btn subtle" href="#operations/day/${work.date}">← К списку работ</a></div><section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></aside>${mapMarkup(getField(work.field), !!result || work.status === 'confirmed')}</div>`;
+  main.innerHTML = `<div class="operation-layout"><aside class="operation-sidebar" aria-label="Расчёт операции"><div class="operation-back"><a class="btn subtle" href="#operations/day/${work.date}">← К списку работ</a>${statusBadge(work)}</div><section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></aside>${mapMarkup(getField(work.field), !!result || work.status === 'confirmed')}</div>`;
   bindMap();
   bindEditor();
+  revealOperationStep();
+}
+function operationStepperMarkup() {
+  const steps=[['settings','Параметры'],['area','Площадь'],['materials','Материалы']];
+  const active=steps.findIndex(([id])=>id===step);
+  return '<ol class="operation-stepper" aria-label="Расчёт полевой операции">'+steps.map(([id,label],index)=>{
+    const state=index===active?'current':index<active?'completed':'upcoming';
+    return '<li data-step-state="'+state+'"><span class="operation-step" '+(index===active?'aria-current="step"':'')+'><span class="operation-step-number" aria-hidden="true">'+(index<active?'<span class="ds-symbol">check</span>':index+1)+'</span><span class="operation-step-label">'+label+'</span><span class="visually-hidden">, шаг '+(index+1)+' из 3, '+(index===active?'текущий':index<active?'завершён':'предстоящий')+'</span></span>'+(index<steps.length-1?'<span class="operation-step-connector" aria-hidden="true"></span>':'')+'</li>';
+  }).join('')+'</ol>';
+}
+function revealOperationStep() {
+  const rail=$('.operation-stepper'),current=rail?.querySelector('[aria-current="step"]');
+  if(!current)return;
+  const bounds=rail.getBoundingClientRect(),item=current.getBoundingClientRect();
+  if(item.right>bounds.right)rail.scrollLeft+=item.right-bounds.right+4;
+  else if(item.left<bounds.left)rail.scrollLeft-=bounds.left-item.left+4;
 }
 function editorMarkup() {
   const w = currentWork(), f = getField(w.field);
-  const header = `<div class="editor-title"><span class="eyebrow">Работа № ${String(w.id).padStart(3,'0')}</span>${statusBadge(w)}</div><h2>${esc(w.machine)} <span class="hint">${w.plate}</span></h2><div class="machine-line">${icon('clock')}<span>${esc(w.date.split('-').reverse().join('.'))} · ${w.time}</span><span>${w.duration}</span></div>`;
+  const header = `<h2>${esc(w.machine)} ${esc(w.plate)}</h2><div class="machine-line">${icon('clock')}<span>${w.time}</span><span>${w.duration}</span></div>`;
   if (w.status !== 'pending') return `${header}<div class="saved-message">${icon(w.status === 'confirmed' ? 'check' : 'help')}<h2>${w.status === 'confirmed' ? 'Работа подтверждена' : 'Работа отклонена'}</h2><p>${w.status === 'confirmed' ? `${esc(w.operation)} · ${fmt(w.finalArea)} га<br>${esc(w.material || 'Материалы не использовались')}${w.material ? ` · ${fmt(w.finalArea*w.rate)} ${esc(w.unit)}` : ''}<br>Сезон ${esc(w.season)} · ${esc(currentCrop(f,w.season) || 'Культура не назначена')}` : 'Эта работа не включена в отчёты.'}</p></div><div class="actions">${button('Вернуть к проверке','reopen')}${w.status === 'confirmed' ? button('Открыть отчёт','open-report',true) : ''}</div><p class="calculate-note">Данные сохранены в этом браузере.</p>`;
-  return `${header}<div class="work-crop">${icon('leaf')}<span class="work-crop-label">Культура</span><strong id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')}</strong></div><div class="step-line"><span class="${step === 'settings' ? 'current' : ''}">1. Параметры</span><i></i><span class="${step === 'area' ? 'current' : ''}">2. Площадь</span><i></i><span class="${step === 'materials' ? 'current' : ''}">3. Материалы</span></div>
-    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options([...new Set([...implementsCatalog.map(item=>item.name),draft.implement])],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия.</p><div class="actions">${button('Отклонить работу','reject',false)}${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
+  return `${header}<div class="work-crop">${icon('leaf')}<span class="work-crop-label">Культура</span><strong id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')}</strong></div>${operationStepperMarkup()}
+    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><div class="full operation-picker"><label for="implement">Прицепное орудие</label><div class="operation-control"><input id="implement" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="implement-options" autocomplete="off" required placeholder="Выберите или найдите орудие" value="${esc(draft.implement)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span><div id="implement-options" class="operation-options" role="listbox" aria-label="Прицепные орудия" hidden></div></div><span id="implement-search-status" class="visually-hidden" role="status" aria-live="polite"></span><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></div><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия.</p><div class="actions">${button('Отклонить работу','reject',false)}${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
     ${step === 'area' ? `<div class="calculation"><span class="eyebrow">Чистая обработанная площадь · демо</span><div class="big-number">${fmt(result.net)} <small>га</small></div><div class="calculation-details"><div>Площадь поля<strong>${fmt(f.area)} га</strong></div><div>Перекрытия<strong>${fmt(result.overlap)} га</strong></div><div>Пропуски<strong>${fmt(result.gaps)} га</strong></div></div></div><h3>Какую площадь учесть?</h3><div class="area-choices">${[['calculated',`Расчётную · ${fmt(result.net)} га`],['field',`До площади поля · ${fmt(f.area)} га`],['manual','Ввести вручную']].map(([value,title]) => `<label class="choice"><input type="radio" name="area-mode" value="${value}" ${areaMode === value ? 'checked' : ''}>${title}</label>`).join('')}</div><label id="manual-area-label" ${areaMode !== 'manual' ? 'hidden' : ''}>Площадь, га<input id="manual-area" type="number" min="0.01" max="100000" step="0.01" value="${esc(manualArea)}"></label><p class="calculate-note">Перекрытия показаны отдельно. При повторном проходе или смещении трекера проверьте результат перед учётом.</p><div class="actions">${button('Назад','back-settings')}${button('Подтвердить площадь','accept-area',true)}</div>` : ''}
     ${step === 'materials' ? `<div class="calculation"><span class="eyebrow">Площадь к учёту</span><div class="big-number">${fmt(draft.finalArea)} <small>га</small></div><span class="hint">${esc(draft.operation)} · сезон ${esc(draft.season)}</span></div><div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['',...new Set([...materialsCatalog.map(item=>item.name),...(draft.material?[draft.material]:[])])],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions">${button('Назад','back-area')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
     ${step !== 'settings' ? `<div class="actions">${button('Отклонить работу','reject',false)}</div>` : ''}`;
 }
-function redrawEditor() { $('.editor').innerHTML = editorMarkup(); bindEditor(); $('#field-map').classList.toggle('calculated',!!result); }
-function bindOperationPicker() {
-  const input = $('#operation');
+function redrawEditor() { $('.editor').innerHTML = editorMarkup(); bindEditor(); revealOperationStep(); $('#field-map').classList.toggle('calculated',!!result); }
+function compatibleImplements(operation) {
+  return implementsCatalog.filter(item=>item.operations.includes(operation));
+}
+function syncDraftImplement() {
+  const item=compatibleImplements(draft.operation).find(item=>item.name===draft.implement);
+  if(!item){draft.implement='';draft.width=0;}
+  else draft.width=item.width;
+  if($('#implement'))$('#implement').value=draft.implement;
+  if($('#width-text'))$('#width-text').textContent=item?fmt(item.width,1)+' м':'—';
+}
+function bindOperationPicker(id = 'operation', names = systemOperations) {
+  const input = $('#'+id);
   if (!input) return;
-  const list = $('#operation-options');
+  const list = $('#'+id+'-options');
   let matches = [], active = -1;
-  const validate = () => input.setCustomValidity(systemOperations.includes(draft.operation) ? '' : 'Выберите операцию из списка.');
+  const selectable = name => id!=='operation' || compatibleImplements(name).length>0;
+  const available = () => id==='implement'?compatibleImplements(draft.operation).map(item=>item.name):names;
+  const validate = () => input.setCustomValidity(available().includes(draft[id]) && selectable(draft[id]) ? '' : 'Выберите значение из списка.');
   const close = () => {
     list.hidden = true;
     input.setAttribute('aria-expanded', 'false');
     input.removeAttribute('aria-activedescendant');
-    input.value = draft.operation;
+    input.value = draft[id];
     validate();
   };
   const highlight = () => {
     [...list.querySelectorAll('[role="option"]')].forEach((item, i) => item.classList.toggle('active', i === active));
     if (active < 0) { input.removeAttribute('aria-activedescendant'); return; }
-    input.setAttribute('aria-activedescendant', `operation-option-${active}`);
+    input.setAttribute('aria-activedescendant', `${id}-option-${active}`);
     list.children[active].scrollIntoView({ block: 'nearest' });
   };
   const open = (query = '') => {
-    matches = systemOperations.filter(name => name.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')));
+    matches = available().filter(name => name.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')));
+    if(id==='operation') matches.sort((a,b)=>Number(compatibleImplements(b).length>0)-Number(compatibleImplements(a).length>0) || a.localeCompare(b,'ru'));
     active = -1;
-    list.innerHTML = matches.length ? matches.map((name, i) => `<div id="operation-option-${i}" role="option" aria-selected="${name === draft.operation}" data-index="${i}">${esc(name)}</div>`).join('') : '<div class="operation-empty">Ничего не найдено</div>';
+    list.innerHTML = matches.length ? matches.map((name, i) => `<div id="${id}-option-${i}" role="option" data-has-implement="${id==='operation' && compatibleImplements(name).length>0}" aria-selected="${name === draft[id]}" aria-disabled="${!selectable(name)}" ${!selectable(name)?'title="Добавьте прицепное оборудование для этой операции"':''} data-index="${i}">${esc(name)}</div>`).join('') : '<div class="operation-empty">'+(id==='implement' && !available().length?'В справочнике нет орудий для этой операции':'Ничего не найдено')+'</div>';
     list.hidden = false;
     input.setAttribute('aria-expanded', 'true');
     input.removeAttribute('aria-activedescendant');
-    $('#operation-search-status').textContent = matches.length ? `Найдено операций: ${matches.length}` : 'Ничего не найдено';
+    $('#'+id+'-search-status').textContent = matches.length ? `Найдено: ${matches.length}` : 'Ничего не найдено';
   };
   const choose = index => {
-    if (!matches[index]) return;
-    draft.operation = matches[index];
+    if (!matches[index] || !selectable(matches[index])) return;
+    draft[id] = matches[index];
+    if(id==='implement'){draft.width=implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width;$('#width-text').textContent=fmt(draft.width,1)+' м';}
     close();
+    if(id==='operation'){syncDraftImplement();bindOperationPicker('implement');}
   };
   input.onfocus = () => { open(); input.select(); };
   input.onclick = () => { if (list.hidden) { open(); input.select(); } };
@@ -664,7 +695,10 @@ function bindOperationPicker() {
       event.preventDefault();
       if (list.hidden) open();
       if (!matches.length) return;
-      active = event.key === 'ArrowDown' ? (active + 1) % matches.length : (active <= 0 ? matches.length - 1 : active - 1);
+      const enabled=matches.map((name,index)=>selectable(name)?index:-1).filter(index=>index>=0);
+      if(!enabled.length)return;
+      const current=enabled.indexOf(active);
+      active=enabled[event.key==='ArrowDown'?(current+1)%enabled.length:(current<=0?enabled.length-1:current-1)];
       highlight();
     } else if (event.key === 'Enter' && !list.hidden) {
       event.preventDefault();
@@ -686,11 +720,13 @@ function bindEditor() {
   if ($('#reopen')) $('#reopen').onclick = () => { currentWork().status = 'pending'; persist(); status = ['pending']; initDraft(); render(); toast('Работа возвращена к проверке'); };
   if ($('#open-report')) $('#open-report').onclick = () => { reportDateFrom = currentWork().date; reportDateTo = currentWork().date; location.hash = 'reports'; };
   bindOperationPicker();
-  if ($('#implement')) $('#implement').onchange = e => { draft.implement = e.target.value; draft.width = implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width; $('#width-text').textContent = `${fmt(draft.width,1)} м`; };
+  if($('#implement'))syncDraftImplement();
+  bindOperationPicker('implement');
   if ($('#driver')) $('#driver').oninput = e => draft.driver = e.target.value;
   if ($('#work-season')) $('#work-season').onchange = e => { draft.season = e.target.value; $('#draft-crop').textContent = `${currentCrop(getField(draft.field),draft.season) || 'Культура не назначена'}`; };
   if ($('#calculate')) $('#calculate').onclick = () => {
     if (!systemOperations.includes(draft.operation)) { $('#operation').reportValidity(); return; }
+    if (!compatibleImplements(draft.operation).some(item=>item.name===draft.implement)) { $('#implement').reportValidity(); return; }
     if (!draft.driver.trim()) { $('#driver').reportValidity(); return; }
     const original = initialWorks.find(w => w.id === draft.id), f = getField(draft.field), ratio = draft.width/original.width;
     const net = Math.min(f.area, +(original.net * ratio).toFixed(2));
