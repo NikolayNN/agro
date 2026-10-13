@@ -7,7 +7,41 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;
 const iconNames = {fields:'map',rotation:'autorenew',operations:'event_available',reports:'description',directory:'grid_view',help:'help',search:'search',sync:'sync',check:'check_circle',tractor:'agriculture',clock:'schedule',download:'download',plus:'add',arrow:'arrow_forward',layers:'layers',leaf:'eco',edit:'edit',play:'play_arrow'};
 const icon = name => `<span class="icon ds-symbol" aria-hidden="true">${iconNames[name] || 'map'}</span>`;
 $$('[data-icon]').forEach(el => el.innerHTML = icon(el.dataset.icon));
-const crops = ['', 'Пшеница озимая', 'Рапс озимый', 'Кукуруза', 'Ячмень яровой', 'Пар'];
+// Системный справочник культур: доступен только для чтения.
+const cropCatalog = Object.freeze([
+  Object.freeze({name:'Рожь озимая',color:'#3F8532'}),
+  Object.freeze({name:'Пшеница озимая',color:'#7DD552'}),
+  Object.freeze({name:'Пшеница яровая',color:'#A9E196'}),
+  Object.freeze({name:'Тритикале озимая',color:'#5BCD70'}),
+  Object.freeze({name:'Тритикале яровая',color:'#B9ECA8'}),
+  Object.freeze({name:'Ячмень яровой',color:'#EBFDDB'}),
+  Object.freeze({name:'Овёс',color:'#DBEA83'}),
+  Object.freeze({name:'Просо',color:'#F6E548'}),
+  Object.freeze({name:'Гречиха',color:'#F8F1D5'}),
+  Object.freeze({name:'Горох',color:'#00EA33'}),
+  Object.freeze({name:'Вика яровая',color:'#E29945'}),
+  Object.freeze({name:'Вика озимая',color:'#CA724A'}),
+  Object.freeze({name:'Люпин узколистый',color:'#5FB3E1'}),
+  Object.freeze({name:'Люпин белый',color:'#98D9F2'}),
+  Object.freeze({name:'Люпин жёлтый',color:'#B5E359'}),
+  Object.freeze({name:'Соя',color:'#EFAFF7'}),
+  Object.freeze({name:'Кукуруза на зерно',color:'#F189AA'}),
+  Object.freeze({name:'Кукуруза на зелёную массу',color:'#EFC6D9'}),
+  Object.freeze({name:'Однолетние травы',color:'#9DE7F5'}),
+  Object.freeze({name:'Многолетние злаковые травы',color:'#C6DFEE'}),
+  Object.freeze({name:'Многолетние бобовые травы',color:'#8AB7E4'}),
+  Object.freeze({name:'Многолетние бобово-злаковые травы',color:'#B4C5F0'}),
+  Object.freeze({name:'Люцерна',color:'#9E90EC'}),
+  Object.freeze({name:'Свекла сахарная',color:'#E5BBA1'}),
+  Object.freeze({name:'Лен-долгунец',color:'#1CE5E8'}),
+  Object.freeze({name:'Лен масличный',color:'#4AC7C9'}),
+  Object.freeze({name:'Рапс озимый',color:'#F6CE07'}),
+  Object.freeze({name:'Рапс яровой',color:'#F2832D'}),
+  Object.freeze({name:'Сурепица озимая',color:'#D95632'}),
+  Object.freeze({name:'Подсолнечник',color:'#A8B492'}),
+  Object.freeze({name:'Картофель',color:'#83E1AC'}),
+]);
+const crops = ['', ...cropCatalog.map(c => c.name), 'Пар'];
 // Системный перечень: не редактируется в справочниках хозяйства.
 const systemOperations = Object.freeze([
   'Лущение',
@@ -53,28 +87,28 @@ const systemOperations = Object.freeze([
   'Подкашивание',
   'Подсев трав',
 ].sort((a, b) => a.localeCompare(b, 'ru', { numeric: true })));
-const cropInks = { 'Пшеница озимая': 'var(--ds-series-2)', 'Рапс озимый': 'var(--ds-series-4)', 'Кукуруза': 'var(--ds-series-1)', 'Ячмень яровой': 'var(--ds-series-5)', 'Пар': 'var(--ds-series-6)' };
+const cropInks = Object.freeze({...Object.fromEntries(cropCatalog.map(c => [c.name, c.color])), 'Пар':'var(--ds-series-6)'});
 const cropColors = Object.fromEntries(crops.map(c => [c, c ? `color-mix(in srgb, ${cropInks[c]} 14%, var(--ds-surface))` : 'var(--ds-surface)']));
 const fields = [
   { id: 12, name: 'Северное', area: 64.8, rotation: { 2024: 'Рапс озимый', 2025: 'Ячмень яровой', 2026: 'Пшеница озимая' } },
-  { id: 8, name: 'За лесом', area: 42.6, rotation: { 2024: 'Пшеница озимая', 2025: 'Кукуруза', 2026: 'Рапс озимый' } },
-  { id: 3, name: 'Берёзовая роща', area: 78.4, rotation: { 2024: 'Пар', 2025: 'Пшеница озимая', 2026: 'Кукуруза' } },
-  { id: 15, name: 'У озера', area: 36.2, rotation: { 2024: 'Кукуруза', 2025: 'Рапс озимый', 2026: 'Ячмень яровой' } },
+  { id: 8, name: 'За лесом', area: 42.6, rotation: { 2024: 'Пшеница озимая', 2025: 'Кукуруза на зерно', 2026: 'Рапс озимый' } },
+  { id: 3, name: 'Берёзовая роща', area: 78.4, rotation: { 2024: 'Пар', 2025: 'Пшеница озимая', 2026: 'Кукуруза на зерно' } },
+  { id: 15, name: 'У озера', area: 36.2, rotation: { 2024: 'Кукуруза на зерно', 2025: 'Рапс озимый', 2026: 'Ячмень яровой' } },
   { id: 6, name: 'Восточное', area: 91.5, rotation: { 2024: 'Ячмень яровой', 2025: 'Пшеница озимая', 2026: 'Рапс озимый' } },
-  { id: 21, name: 'Дальний клин', area: 53.7, rotation: { 2025: 'Кукуруза', 2026: 'Пшеница озимая' } },
-  { id: 22, name: 'Южное', area: 47.3, rotation: { 2024: 'Кукуруза', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
+  { id: 21, name: 'Дальний клин', area: 53.7, rotation: { 2025: 'Кукуруза на зерно', 2026: 'Пшеница озимая' } },
+  { id: 22, name: 'Южное', area: 47.3, rotation: { 2024: 'Кукуруза на зерно', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
   { id: 23, name: 'За деревней', area: 62.1, rotation: { 2024: 'Рапс озимый', 2025: 'Пшеница озимая', 2026: 'Ячмень яровой' } },
-  { id: 24, name: 'Луговое', area: 28.9, rotation: { 2024: 'Ячмень яровой', 2025: 'Пар', 2026: 'Кукуруза' } },
-  { id: 25, name: 'У речки', area: 39.6, rotation: { 2024: 'Пар', 2025: 'Кукуруза', 2026: 'Рапс озимый' } },
+  { id: 24, name: 'Луговое', area: 28.9, rotation: { 2024: 'Ячмень яровой', 2025: 'Пар', 2026: 'Кукуруза на зерно' } },
+  { id: 25, name: 'У речки', area: 39.6, rotation: { 2024: 'Пар', 2025: 'Кукуруза на зерно', 2026: 'Рапс озимый' } },
   { id: 26, name: 'Западное', area: 84.2, rotation: { 2024: 'Пшеница озимая', 2025: 'Ячмень яровой', 2026: 'Пар' } },
-  { id: 27, name: 'Сосновый бор', area: 51.8, rotation: { 2024: 'Рапс озимый', 2025: 'Кукуруза', 2026: 'Пшеница озимая' } },
+  { id: 27, name: 'Сосновый бор', area: 51.8, rotation: { 2024: 'Рапс озимый', 2025: 'Кукуруза на зерно', 2026: 'Пшеница озимая' } },
   { id: 28, name: 'Верхний клин', area: 33.5, rotation: { 2024: 'Пшеница озимая', 2025: 'Рапс озимый', 2026: 'Ячмень яровой' } },
-  { id: 29, name: 'Нижнее', area: 56.4, rotation: { 2024: 'Кукуруза', 2025: 'Пшеница озимая', 2026: 'Рапс озимый' } },
-  { id: 30, name: 'У дороги', area: 44.7, rotation: { 2024: 'Пар', 2025: 'Ячмень яровой', 2026: 'Кукуруза' } },
+  { id: 29, name: 'Нижнее', area: 56.4, rotation: { 2024: 'Кукуруза на зерно', 2025: 'Пшеница озимая', 2026: 'Рапс озимый' } },
+  { id: 30, name: 'У дороги', area: 44.7, rotation: { 2024: 'Пар', 2025: 'Ячмень яровой', 2026: 'Кукуруза на зерно' } },
   { id: 31, name: 'Большое', area: 112.6, rotation: { 2024: 'Ячмень яровой', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
   { id: 32, name: 'Малый участок', area: 18.3, rotation: { 2024: 'Рапс озимый', 2025: 'Пшеница озимая', 2026: 'Пар' } },
-  { id: 33, name: 'За садом', area: 37.9, rotation: { 2024: 'Кукуруза', 2025: 'Пар', 2026: 'Ячмень яровой' } },
-  { id: 34, name: 'Дубрава', area: 69.1, rotation: { 2024: 'Пшеница озимая', 2025: 'Кукуруза', 2026: 'Рапс озимый' } },
+  { id: 33, name: 'За садом', area: 37.9, rotation: { 2024: 'Кукуруза на зерно', 2025: 'Пар', 2026: 'Ячмень яровой' } },
+  { id: 34, name: 'Дубрава', area: 69.1, rotation: { 2024: 'Пшеница озимая', 2025: 'Кукуруза на зерно', 2026: 'Рапс озимый' } },
   { id: 35, name: 'Дальнее южное', area: 73.4, rotation: { 2024: 'Пар', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
 ];
 const initialWorks = [
@@ -86,10 +120,18 @@ const initialWorks = [
   { id: 6, field: 21, date: '2026-10-01', machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '13:30–18:10', duration: '4 ч 40 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 51.2, overlap: 1.3, status: 'confirmed', finalArea: 51.2, season: '2026', material: 'Пшеница · Элегия', rate: 220, unit: 'кг' },
   { id: 7, field: 8, date: '2026-09-30', machine: 'МТЗ-1523', plate: 'АВ 7102', driver: 'Петров Николай', time: '08:00–11:20', duration: '3 ч 20 мин', operation: 'Химобработка (гербициды)', implement: 'Amazone UX 4200', width: 24, net: 41.1, overlap: .8, status: 'confirmed', finalArea: 41.1, season: '2026', material: 'СЗР · демо-препарат', rate: 1.2, unit: 'л' },
 ];
+let implementsCatalog = [
+  {id:1,name:'Horsch Pronto 6 DC',width:6,operations:['Сев']},
+  {id:2,name:'КПС-8',width:8,operations:['Культивация']},
+  {id:3,name:'Amazone UX 4200',width:24,operations:['Химобработка (гербициды)','Химобработка (фунгициды)','Химобработка (инсектициды)']},
+  {id:4,name:'ППО-8-40',width:3.2,operations:['Вспашка']},
+];
 let works = structuredClone(initialWorks);
 let projectMachines = structuredClone(AuroraFleet.initialProjectMachines);
 try {
   const saved = JSON.parse(localStorage.getItem('aurora-agro-demo-v1') || 'null');
+  if (Array.isArray(saved?.fields) && saved.fields.length && saved.fields.every(f=>Number.isSafeInteger(f.id) && f.id>0 && typeof f.name==='string' && Number.isFinite(f.area) && f.rotation && typeof f.rotation==='object' && (!f.contour || (Array.isArray(f.contour) && f.contour.length>=3 && f.contour.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))))) && new Set(saved.fields.map(f=>f.id)).size===saved.fields.length) fields.splice(0,fields.length,...saved.fields);
+  if (Array.isArray(saved?.implementsCatalog) && saved.implementsCatalog.length && saved.implementsCatalog.every(item=>Number.isSafeInteger(item.id) && item.id>0 && typeof item.name==='string' && item.name.trim() && Number.isFinite(item.width) && item.width>0 && Array.isArray(item.operations) && item.operations.length && item.operations.every(op=>systemOperations.includes(op))) && new Set(saved.implementsCatalog.map(item=>item.id)).size===saved.implementsCatalog.length && new Set(saved.implementsCatalog.map(item=>item.name.trim().toLocaleLowerCase('ru'))).size===saved.implementsCatalog.length) implementsCatalog=saved.implementsCatalog;
   if (saved?.works && Array.isArray(saved.works) && saved.works.length === initialWorks.length) works = saved.works;
   if (Array.isArray(saved?.addedFields)) saved.addedFields.forEach(f => {
     if (Number.isSafeInteger(f.id) && f.id > 0 && !fields.some(existing=>existing.id===f.id) && typeof f.name==='string' && Array.isArray(f.contour) && f.contour.length>=3 && f.contour.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))) fields.push({id:f.id,name:f.name,area:0,rotation:{},contour:f.contour,exclusions:Array.isArray(f.exclusions) ? f.exclusions.filter(points=>Array.isArray(points) && points.length>=3 && points.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))) : [],exclusionNames:Array.isArray(f.exclusionNames) ? f.exclusionNames.map((name,i)=>typeof name==='string' && name.trim() ? name.trim() : 'Участок '+(i+1)) : []});
@@ -99,6 +141,9 @@ try {
 } catch { /* В приватном режиме макет продолжает работать без сохранения. */ }
 // Однозначные переименования старого демо. Обобщённые виды требуют уточнения.
 works.forEach(w => { w.operation = ({ 'Посев': 'Сев', 'Пахота': 'Вспашка' })[w.operation] || w.operation; });
+fields.forEach(field => Object.keys(field.rotation).forEach(year => {
+  if (field.rotation[year] === 'Кукуруза') field.rotation[year] = 'Кукуруза на зерно';
+}));
 let page = 'operations', season = '2026', date = '2026-10-01', status = 'pending', selected = 1, step = 'settings';
 let draft = null, result = null, areaMode = 'calculated', manualArea = '', fieldSelected = 12, zoom = 1;
 let workQuery = '', fieldQuery = '', reportKind = 'director', reportDateFrom = '2026-10-01', reportDateTo = '2026-10-01';
@@ -141,7 +186,7 @@ const currentCrop = (f, year = season) => f.rotation[year] || '';
 const cropTag = crop => crop ? `<span class="crop"><i style="background:${cropInks[crop]}"></i>${esc(crop)}</span>` : '<span class="hint">Не назначена</span>';
 const options = (values, selectedValue) => values.map(v => `<option value="${esc(v)}" ${String(v) === String(selectedValue) ? 'selected' : ''}>${esc(v || 'Не назначена')}</option>`).join('');
 function persist() {
-  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ works, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])), projectMachines, addedFields: fields.filter(f=>f.contour) })); }
+  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ fields, works, implementsCatalog, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])), projectMachines, addedFields: fields.filter(f=>f.contour) })); }
   catch { toast('Изменения действуют в текущей вкладке: сохранение браузером недоступно.'); }
 }
 let toastTimer;
@@ -158,23 +203,30 @@ function searchBox(id, placeholder, value = '') { return `<div class="search">${
 function initDraft() {
   const w = currentWork();
   draft = w ? { ...w } : null;
+  if (draft?.status === 'pending') draft.width = implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width;
   result = null; step = 'settings'; areaMode = 'calculated'; manualArea = ''; zoom = 1;
 }
 function filteredWorks() { return works.filter(w => w.date === date && String(w.season) === season && (status === 'all' || w.status === status) && `${getField(w.field).name} ${w.machine} ${w.driver}`.toLowerCase().includes(workQuery.toLowerCase())); }
 function statusBadge(w) { return `<span class="badge ${w.status === 'confirmed' ? 'green' : w.status === 'rejected' ? 'gray' : ''}">${w.status === 'confirmed' ? '✓ Подтверждена' : w.status === 'rejected' ? 'Отклонена' : 'Ждёт расчёта'}</span>`; }
+function fieldFromEditRoute() {
+  const match = /^fields\/(\d+)\/edit$/.exec(page);
+  return match ? fields.find(f=>f.id===Number(match[1])) : null;
+}
 function updateNav() {
   const titles = { operations: 'Операции', fields: 'Поля', rotation: 'Севооборот', reports: 'Отчёты', directory: 'Справочники' };
   const directory = directoryCards.find(card => page === `directory/${card.id}`);
   const editingMachine = machineFromEditRoute();
-  $('#breadcrumb').innerHTML = editingMachine ? `<a href="#directory">Справочники</a><span>/</span><a href="#directory/machines">Техника</a><span>/</span>${esc(editingMachine.name)}` : directory ? `<a href="#directory">Справочники</a><span>/</span>${directory.title}` : titles[page];
-  document.title = `${editingMachine ? editingMachine.name : directory?.title || titles[page]} — Аврора Агро`;
-  $$('nav a').forEach(a => { const active = a.dataset.page === page || (a.dataset.page === 'directory' && (!!directory || !!editingMachine)); a.classList.toggle('active', active); if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const editingField = fieldFromEditRoute();
+  $('#breadcrumb').innerHTML = editingField ? `<a href="#fields">Поля</a><span>/</span>${esc(editingField.name)}<span>/</span>Редактирование` : editingMachine ? `<a href="#directory">Справочники</a><span>/</span><a href="#directory/machines">Техника</a><span>/</span>${esc(editingMachine.name)}` : directory ? `<a href="#directory">Справочники</a><span>/</span>${directory.title}` : titles[page];
+  document.title = `${editingField ? `Редактирование: ${editingField.name}` : editingMachine ? editingMachine.name : directory?.title || titles[page]} — Аврора Агро`;
+  $$('nav a').forEach(a => { const active = a.dataset.page === page || (a.dataset.page === 'fields' && !!editingField) || (a.dataset.page === 'directory' && (!!directory || !!editingMachine)); a.classList.toggle('active', active); if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   $('#pending-count').textContent = works.filter(w => w.status === 'pending' && String(w.season) === season).length;
 }
 function render() {
-  main.classList.toggle('fields-page', page === 'fields');
+  main.classList.toggle('fields-page', page === 'fields' || !!fieldFromEditRoute());
   updateNav();
-  if (machineFromEditRoute()) renderMachineEditorPage();
+  if (fieldFromEditRoute()) renderFieldDrawing(fieldFromEditRoute());
+  else if (machineFromEditRoute()) renderMachineEditorPage();
   else if (page.startsWith('directory/')) renderDirectoryPage();
   else ({ operations: renderOperations, fields: renderFields, rotation: renderRotation, reports: renderReports, directory: renderDirectory })[page]();
 }
@@ -259,7 +311,7 @@ function editorMarkup() {
   const header = `<div class="editor-title"><span class="eyebrow">Работа № ${String(w.id).padStart(3,'0')}</span>${statusBadge(w)}</div><h2>${esc(w.machine)} <span class="hint">${w.plate}</span></h2><div class="machine-line">${icon('clock')}<span>${w.time}</span><span>${w.duration}</span></div>`;
   if (w.status !== 'pending') return `${header}<div class="saved-message">${icon(w.status === 'confirmed' ? 'check' : 'help')}<h2>${w.status === 'confirmed' ? 'Работа подтверждена' : 'Работа отклонена'}</h2><p>${w.status === 'confirmed' ? `${esc(w.operation)} · ${fmt(w.finalArea)} га<br>${esc(w.material || 'Материалы не использовались')}${w.material ? ` · ${fmt(w.finalArea*w.rate)} ${esc(w.unit)}` : ''}<br>Сезон ${esc(w.season)} · ${esc(currentCrop(f,w.season) || 'Культура не назначена')}` : 'Эта работа не включена в отчёты.'}</p></div><div class="actions">${button('Вернуть к проверке','reopen')}${w.status === 'confirmed' ? button('Открыть отчёт','open-report',true) : ''}</div><p class="calculate-note">Данные сохранены в этом браузере.</p>`;
   return `${header}<div class="step-line"><span class="${step === 'settings' ? 'current' : ''}">1. Параметры</span><i></i><span class="${step === 'area' ? 'current' : ''}">2. Площадь</span><i></i><span class="${step === 'materials' ? 'current' : ''}">3. Материалы</span></div>
-    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options(['Horsch Pronto 6 DC','КПС-8','Amazone UX 4200','ППО-8-40'],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label><div class="full width-note">${icon('leaf')}<span id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')} · из севооборота</span></div></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия. В макете используются демонстрационные показатели.</p><div class="actions">${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
+    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options([...new Set([...implementsCatalog.map(item=>item.name),draft.implement])],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label><div class="full width-note">${icon('leaf')}<span id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')} · из севооборота</span></div></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия. В макете используются демонстрационные показатели.</p><div class="actions">${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
     ${step === 'area' ? `<div class="calculation"><span class="eyebrow">Чистая обработанная площадь · демо</span><div class="big-number">${fmt(result.net)} <small>га</small></div><div class="calculation-details"><div>Площадь поля<strong>${fmt(f.area)} га</strong></div><div>Перекрытия<strong>${fmt(result.overlap)} га</strong></div><div>Пропуски<strong>${fmt(result.gaps)} га</strong></div></div></div><h3>Какую площадь учесть?</h3><div class="area-choices">${[['calculated',`Расчётную · ${fmt(result.net)} га`],['field',`До площади поля · ${fmt(f.area)} га`],['manual','Ввести вручную']].map(([value,title]) => `<label class="choice"><input type="radio" name="area-mode" value="${value}" ${areaMode === value ? 'checked' : ''}>${title}</label>`).join('')}</div><label id="manual-area-label" ${areaMode !== 'manual' ? 'hidden' : ''}>Площадь, га<input id="manual-area" type="number" min="0.01" max="100000" step="0.01" value="${esc(manualArea)}"></label><p class="calculate-note">Перекрытия показаны отдельно. При повторном проходе или смещении трекера проверьте результат перед учётом.</p><div class="actions">${button('Назад','back-settings')}${button('Подтвердить площадь','accept-area',true)}</div>` : ''}
     ${step === 'materials' ? `<div class="calculation"><span class="eyebrow">Площадь к учёту</span><div class="big-number">${fmt(draft.finalArea)} <small>га</small></div><span class="hint">${esc(draft.operation)} · сезон ${esc(draft.season)}</span></div><div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['','Пшеница · Элегия','Удобрение · NPK 16:16:16','СЗР · демо-препарат'],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions">${button('Назад','back-area')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
     <div class="actions">${button('Отклонить работу','reject',false)}</div>`;
@@ -329,7 +381,7 @@ function bindEditor() {
   if ($('#reopen')) $('#reopen').onclick = () => { currentWork().status = 'pending'; persist(); status = 'pending'; initDraft(); render(); toast('Работа возвращена к проверке'); };
   if ($('#open-report')) $('#open-report').onclick = () => { reportDateFrom = date; reportDateTo = date; location.hash = 'reports'; };
   bindOperationPicker();
-  if ($('#implement')) $('#implement').onchange = e => { draft.implement = e.target.value; draft.width = { 'Horsch Pronto 6 DC':6,'КПС-8':8,'Amazone UX 4200':24,'ППО-8-40':3.2 }[draft.implement]; $('#width-text').textContent = `${fmt(draft.width,1)} м`; };
+  if ($('#implement')) $('#implement').onchange = e => { draft.implement = e.target.value; draft.width = implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width; $('#width-text').textContent = `${fmt(draft.width,1)} м`; };
   if ($('#driver')) $('#driver').oninput = e => draft.driver = e.target.value;
   if ($('#work-season')) $('#work-season').onchange = e => { draft.season = e.target.value; $('#draft-crop').textContent = `${currentCrop(getField(draft.field),draft.season) || 'Культура не назначена'} · из севооборота`; };
   if ($('#calculate')) $('#calculate').onclick = () => {
@@ -368,7 +420,7 @@ function renderFields() {
   if (drawing) { renderFieldDrawing(); return; }
   const filtered = fields.filter(f => `${f.name} ${f.id}`.toLowerCase().includes(fieldQuery.toLowerCase()));
   const f = getField(fieldSelected);
-  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar" aria-label="Поля хозяйства"><div class="field-sidebar-heading"><h1>Поля хозяйства</h1><p>${fields.length} полей · ${fmt(fields.reduce((sum,f) => sum + f.area,0))} га</p><div class="field-sidebar-actions">${button('Импорт','import-fields')}${button('Экспорт','export-fields')}${button('Добавить','draw-field',true)}</div><div class="field-sidebar-search">${searchBox('field-search','Название или номер поля',fieldQuery)}</div></div><div class="field-list">${filtered.map(field => `<button class="field-card ${field.id === fieldSelected ? 'active' : ''}" data-field="${field.id}"><strong><span class="field-no">${String(field.id).padStart(2,'0')}</span>${esc(field.name)}</strong><small>${field.contour ? 'Площадь не рассчитана' : `Учётная площадь ${fmt(field.area)} га`}</small><div class="row">${cropTag(currentCrop(field))}<span>↗</span></div></button>`).join('') || '<p class="empty">Поля не найдены</p>'}</div></aside>${mapMarkup(f,false,false,false)}</div>`;
+  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar" aria-label="Поля хозяйства"><div class="field-sidebar-heading"><h1>Поля хозяйства</h1><p>${fields.length} полей · ${fmt(fields.reduce((sum,f) => sum + f.area,0))} га</p><div class="field-sidebar-actions">${button('Импорт','import-fields')}${button('Экспорт','export-fields')}${button('Добавить','draw-field',true)}</div><div class="field-sidebar-search">${searchBox('field-search','Название или номер поля',fieldQuery)}</div></div><div class="field-list">${filtered.map(field => `<div class="field-card ${field.id === fieldSelected ? 'active' : ''}"><button class="field-card-select" data-field="${field.id}"><strong><span class="field-no">${String(field.id).padStart(2,'0')}</span>${esc(field.name)}</strong><small>${field.contour ? 'Площадь не рассчитана' : `Учётная площадь ${fmt(field.area)} га`}</small><div class="row">${cropTag(currentCrop(field))}</div></button><a class="field-card-edit" href="#fields/${field.id}/edit" aria-label="Редактировать поле ${esc(field.name)}" title="Редактировать поле">${icon('edit')}</a></div>`).join('') || '<p class="empty">Поля не найдены</p>'}</div></aside>${mapMarkup(f,false,false,false)}</div>`;
   bindMap();
   $$('[data-field]').forEach(b => b.onclick = () => { fieldSelected = Number(b.dataset.field); drawing = false; drawPoints = []; renderFields(); });
   $('#field-search').oninput = e => { fieldQuery = e.target.value; renderFields(); $('#field-search').focus(); };
@@ -412,8 +464,12 @@ function exclusionError(contour, exclusions) {
   }
   return '';
 }
-function renderFieldDrawing() {
-  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar field-drawing" aria-label="Добавление поля"><div class="field-sidebar-heading"><h1>Добавить поле</h1><p>Нарисуйте контур и укажите данные поля.</p></div><form id="new-field-form" class="field-drawing-form"><label>Номер поля<input id="new-field-number" type="number" min="1" step="1" required placeholder="Например, 36"></label><label>Название поля<input id="new-field-name" required maxlength="100" placeholder="Например, Южное"></label><div class="field-drawing-guide"><h2>Контуры</h2><p>Нажимайте на карте, чтобы отметить углы поля. Перетаскивайте точки для изменения контура. Нужно не менее трёх точек.</p><button class="field-drawing-area field-contour-pick" type="button" id="edit-field-contour" aria-pressed="true"><span>Обрабатываемая площадь</span><strong id="draw-area" aria-live="polite">0,00 га</strong><span class="area-detail"><span>Общая</span><span id="draw-total-area">0,00 га</span></span><span class="area-detail"><span>Необрабатываемая</span><span id="draw-excluded-area">0,00 га</span></span></button><div class="field-exclusions"><h2>Необрабатываемые участки</h2><div id="exclusion-list"></div><div class="exclusion-actions"><button class="btn" type="button" id="add-exclusion">Добавить участок</button></div></div></div><p id="draw-error" class="field-drawing-error" role="alert"></p><div class="field-drawing-actions"><button class="btn" type="button" id="cancel-draw">Отмена</button><button class="btn primary" type="submit" id="finish-draw" disabled>Сохранить</button></div></form></aside>${mapMarkup(getField(fieldSelected),false,false,false)}</div>`;
+function renderFieldDrawing(editingField = null) {
+  if (editingField) {
+    drawing=true; fieldSelected=editingField.id; zoom=1;
+    drawPoints=structuredClone(editingField.contour || [[161,125],[503,102],[541,347],[439,451],[195,461],[142,333]]);
+  }
+  main.innerHTML = `<div class="fields-layout"><aside class="field-sidebar field-drawing" aria-label="${editingField ? 'Редактирование поля' : 'Добавление поля'}"><div class="field-sidebar-heading"><h1>${editingField ? 'Редактировать поле' : 'Добавить поле'}</h1><p>Нарисуйте контур и укажите данные поля.</p></div><form id="new-field-form" class="field-drawing-form"><label>Номер поля<input id="new-field-number" type="number" min="1" step="1" required value="${editingField ? editingField.id : ''}" placeholder="Например, 36"></label><label>Название поля<input id="new-field-name" required maxlength="100" value="${editingField ? esc(editingField.name) : ''}" placeholder="Например, Южное"></label><label>Культура · сезон ${season}<select id="field-current-crop">${options(crops,editingField?.rotation[season] || '')}</select></label><div class="field-drawing-guide"><h2>Контуры</h2><p>Нажимайте на карте, чтобы отметить углы поля. Перетаскивайте точки для изменения контура. Нужно не менее трёх точек.</p><button class="field-drawing-area field-contour-pick" type="button" id="edit-field-contour" aria-pressed="true"><span>Обрабатываемая площадь</span><strong id="draw-area" aria-live="polite">0,00 га</strong><span class="area-detail"><span>Общая</span><span id="draw-total-area">0,00 га</span></span><span class="area-detail"><span>Необрабатываемая</span><span id="draw-excluded-area">0,00 га</span></span></button><div class="field-exclusions"><h2>Необрабатываемые участки</h2><div id="exclusion-list"></div><div class="exclusion-actions"><button class="btn" type="button" id="add-exclusion">Добавить участок</button></div></div></div><p id="draw-error" class="field-drawing-error" role="alert"></p><div class="field-drawing-actions"><button class="btn" type="button" id="cancel-draw">Отмена</button><button class="btn primary" type="submit" id="finish-draw" disabled>Сохранить</button></div></form></aside>${mapMarkup(getField(fieldSelected),false,false,false)}</div>`;
 
   const updateSaveButton = () => {
     const numberInput = $('#new-field-number');
@@ -425,7 +481,8 @@ function renderFieldDrawing() {
   bindMap();
   const drawHistory = [], redoHistory = [];
   const recordHistory = state => { drawHistory.push(state); redoHistory.length=0; };
-  let exclusions = [], exclusionNames = [], nextExclusionNumber = 1, activeContour = -1;
+  let exclusions = structuredClone(editingField?.exclusions || []), exclusionNames = exclusions.map((p,i)=>editingField?.exclusionNames?.[i] || 'Участок '+(i+1)), activeContour = -1;
+  let nextExclusionNumber = Math.max(exclusions.length,...exclusionNames.map(name=>Number(/^Участок (\d+)$/.exec(name)?.[1] || 0)))+1;
   const activePoints = () => activeContour < 0 ? drawPoints : exclusions[activeContour];
   const snapshot = () => structuredClone({ contour: drawPoints, exclusions, exclusionNames, nextExclusionNumber, activeContour });
   const restore = state => { drawPoints=state.contour; exclusions=state.exclusions; exclusionNames=state.exclusionNames; nextExclusionNumber=state.nextExclusionNumber; activeContour=state.activeContour; };
@@ -511,22 +568,22 @@ function renderFieldDrawing() {
     if(!input || pointer) return;
     const index=Number(input.dataset.exclusionName), previous=exclusionNames[index];
     const name=input.value.trim() || previous;
-    if(name!==previous) { drawHistory.push(snapshot()); exclusionNames[index]=name; }
+    if(name!==previous) { recordHistory(snapshot()); exclusionNames[index]=name; }
     input.value=name;
     $('#undo-draw').disabled=!drawHistory.length;
     $('#redo-draw').disabled=!redoHistory.length;
   };
   $('#add-exclusion').onclick = () => {
     if(pointer || $('#add-exclusion').disabled) return;
-    drawHistory.push(snapshot()); exclusions.push([]); exclusionNames.push('Участок '+nextExclusionNumber++); activeContour=exclusions.length-1; updateContour();
+    recordHistory(snapshot()); exclusions.push([]); exclusionNames.push('Участок '+nextExclusionNumber++); activeContour=exclusions.length-1; updateContour();
   };
-  $('#cancel-draw').onclick = () => { drawing = false; drawPoints = []; renderFields(); };
+  $('#cancel-draw').onclick = () => { drawing = false; drawPoints = []; if(editingField) location.hash='fields'; else renderFields(); };
   $('#new-field-form').onsubmit = e => {
     e.preventDefault();
     const id = Number($('#new-field-number').value), name = $('#new-field-name').value.trim();
     const fail = (message,input) => { $('#draw-error').textContent = message; if(input) $(input).focus(); };
     if(!Number.isSafeInteger(id) || id<1) return fail('Введите положительный целый номер поля.','#new-field-number');
-    if(fields.some(f=>f.id===id)) return fail('Поле с таким номером уже существует.','#new-field-number');
+    if(fields.some(f=>f.id===id && f!==editingField)) return fail('Поле с таким номером уже существует.','#new-field-number');
     if(!name) return fail('Введите название поля.','#new-field-name');
     if(drawPoints.length<3) return fail('Отметьте хотя бы три точки на карте.');
     const area=Math.abs(drawPoints.reduce((sum,p,i)=>{const n=drawPoints[(i+1)%drawPoints.length];return sum+p[0]*n[1]-n[0]*p[1];},0));
@@ -534,8 +591,16 @@ function renderFieldDrawing() {
     if(polygonEdgesIntersect(drawPoints,drawPoints,true)) return fail('Границы поля не должны пересекаться.');
     const invalid = exclusionError(drawPoints,exclusions);
     if(invalid) return fail(invalid);
-    fields.push({id,name,area:0,rotation:{},contour:drawPoints.map(p=>[...p]),exclusions:structuredClone(exclusions),exclusionNames:[...exclusionNames]});
-    fieldSelected=id; fieldQuery=''; drawing=false; drawPoints=[]; persist(); renderFields(); toast('Поле «'+name+'» добавлено');
+    const changes={id,name,rotation:{...(editingField?.rotation || {}),[season]:$('#field-current-crop').value},contour:drawPoints.map(p=>[...p]),exclusions:structuredClone(exclusions),exclusionNames:[...exclusionNames]};
+    if(editingField) {
+      const previousId=editingField.id;
+      Object.assign(editingField,changes);
+      works.forEach(w=>{if(Number(w.field)===previousId)w.field=id;});
+      if(draft && Number(draft.field)===previousId)draft.field=id;
+    } else fields.push({...changes,area:0});
+    fieldSelected=id; fieldQuery=''; drawing=false; drawPoints=[]; persist();
+    if(editingField) location.hash='fields'; else renderFields();
+    toast('Поле «'+name+'» '+(editingField ? 'сохранено' : 'добавлено'));
   };
   updateContour(); $('#new-field-number').focus();
 }
@@ -582,10 +647,10 @@ function downloadCsv(name, rows) {
 }
 const directoryCards = [
   {id:'machines',title:'Техника',icon:'tractor',description:'Машины, подключённые к этому хозяйству из корневого проекта.',detailTitle:'Госномер',get items(){return projectMachines.map(machine=>[machine.name,machine.plate,machine.type,machine.id]);}},
-  {id:'implements',title:'Прицепные орудия',icon:'layers',description:'Ширина захвата используется при расчёте работ.',detailTitle:'Ширина захвата',items:[['Horsch Pronto 6 DC','6,0 м'],['КПС-8','8,0 м'],['Amazone UX 4200','24,0 м'],['ППО-8-40','3,2 м']]},
-  {id:'crops',title:'Культуры',icon:'leaf',description:'Общий справочник для полей, севооборота и отчётов.',items:crops.filter(Boolean).map(c=>[c,''])},
+  {id:'implements',title:'Прицепные орудия',icon:'layers',description:'Ширина захвата используется при расчёте работ.',detailTitle:'Ширина захвата',get items(){return implementsCatalog.map(item=>[item.name,`${fmt(item.width,1)} м`,item.operations.join(', '),item.id]);}},
+  {id:'crops',title:'Культуры',icon:'leaf',description:'Системный список культур и их цветов. Только для чтения.',detailTitle:'Цвет',items:cropCatalog.map(c=>[c.name,c.color])},
+  {id:'operations',title:'Технологические операции',icon:'operations',description:'Системный список операций для полевых работ. Только для чтения.',items:systemOperations.map(name=>[name,''])},
   {id:'materials',title:'Материалы',icon:'directory',description:'Фиксируется применение. Складские остатки не ведутся.',detailTitle:'Тип · единица',items:[['Пшеница · Элегия','Семена · кг'],['Удобрение · NPK 16:16:16','Удобрения · кг'],['СЗР · демо-препарат','СЗР · л']]},
-  {id:'operators',title:'Механизаторы',icon:'help',description:'Подставляются из GPS-данных; доступны для корректировки в работе.',items:[['Ковалёв Александр',''],['Иванов Сергей',''],['Петров Николай',''],['Смирнов Андрей','']]},
 ];
 const recordCount = count => `${count} ${count % 10 === 1 && count % 100 !== 11 ? 'запись' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'записи' : 'записей'}`;
 const formatTrackerOffset = value => value === 0 ? 'По центру' : `${Math.abs(value).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} м ${value < 0 ? 'влево' : 'вправо'}`;
@@ -593,16 +658,19 @@ function machineFromEditRoute() {
   return projectMachines.find(machine => page === `directory/machines/${encodeURIComponent(machine.id)}/edit`);
 }
 function renderDirectory() {
-  main.innerHTML=`${heading('Справочники','Общие данные хозяйства для всех разделов.')}<div class="directory-grid">${directoryCards.map(card=>`<a class="directory-card directory-link" href="#directory/${card.id}">${icon(card.icon)}<span class="directory-card-count">${recordCount(card.items.length)}</span><h2>${card.title}</h2><p>${card.description}</p><span class="directory-open">Открыть справочник ${icon('arrow')}</span></a>`).join('')}</div><p class="section-note">Технику можно добавить из корневого проекта. Остальные справочники доступны для просмотра. Технологические операции задаются на уровне системы.</p>`;
+  main.innerHTML=`${heading('Справочники','Общие данные хозяйства для всех разделов.')}<div class="directory-grid">${directoryCards.map(card=>`<a class="directory-card directory-link" href="#directory/${card.id}">${icon(card.icon)}<span class="directory-card-count">${recordCount(card.items.length)}</span><h2>${card.title}</h2><p>${card.description}</p><span class="directory-open">Открыть справочник ${icon('arrow')}</span></a>`).join('')}</div>`;
 }
 function renderDirectoryPage() {
   const card = directoryCards.find(item => page === `directory/${item.id}`);
   if (!card) return;
   const hasDetail = !!card.detailTitle;
   const isMachines = card.id === 'machines';
+  const isImplements = card.id === 'implements';
+  const isCrops = card.id === 'crops';
+  const isOperations = card.id === 'operations';
   const items = [...card.items].sort(([first], [second]) => first.localeCompare(second, 'ru', {numeric:true}));
-  const columns = 1 + Number(hasDetail) + (isMachines ? 2 : 0);
-  main.innerHTML=`${heading(card.title,card.description,isMachines?button('Добавить технику','add-machine',true,'plus'):'')}<div class="directory-toolbar"><a class="btn" href="#directory">← Все справочники</a>${searchBox('directory-search',`Поиск: ${card.title.toLowerCase()}`)}<span class="hint" id="directory-result-count">${recordCount(items.length)}</span></div><section class="table-panel"><div class="table-scroll"><table class="directory-table"><thead><tr><th>Наименование</th>${hasDetail?`<th>${card.detailTitle}</th>`:''}${isMachines?'<th>Тип техники</th><th>Смещение трекера</th>':''}</tr></thead><tbody>${items.map(([name,detail,type,id])=>`<tr data-search="${esc(`${name} ${detail} ${type || ''}`.toLocaleLowerCase('ru'))}" ${isMachines?`data-machine-href="#directory/machines/${encodeURIComponent(id)}/edit"`:''}><td>${isMachines?`<a class="directory-machine-link" href="#directory/machines/${encodeURIComponent(id)}/edit" aria-label="Открыть технику ${esc(name)}"><strong>${esc(name)}</strong></a>`:`<strong>${esc(name)}</strong>`}</td>${hasDetail?`<td>${esc(detail)}</td>`:''}${isMachines?`<td>${esc(type || 'Не указан')}</td><td>${formatTrackerOffset(projectMachines.find(machine => machine.id === id)?.trackerOffset ?? 0)}</td>`:''}</tr>`).join('')}<tr id="directory-empty" hidden><td colspan="${columns}" class="empty">Ничего не найдено. Попробуйте другой запрос.</td></tr></tbody></table></div></section><p class="section-note">${isMachines?'Технику можно добавить из корневого проекта, изменить её тип и положение трекера для этого хозяйства. Изменения сохраняются только в браузере.':'В MVP-макете записи доступны только для просмотра.'}</p>`;
+  const columns = 1 + Number(hasDetail) + (isMachines ? 2 : 0) + (isImplements ? 2 : 0);
+  main.innerHTML=`${heading(card.title,card.description,isMachines?button('Добавить технику','add-machine',true,'plus'):isImplements?button('Добавить оборудование','add-implement',true,'plus'):'')}<div class="directory-toolbar"><a class="btn" href="#directory">← Все справочники</a>${searchBox('directory-search',`Поиск: ${card.title.toLowerCase()}`)}<span class="hint" id="directory-result-count">${recordCount(items.length)}</span></div><section class="table-panel"><div class="table-scroll"><table class="directory-table"><thead><tr><th>Наименование</th>${hasDetail?`<th>${card.detailTitle}</th>`:''}${isMachines?'<th>Тип техники</th><th>Смещение трекера</th>':''}${isImplements?'<th>Технологические операции</th><th></th>':''}</tr></thead><tbody>${items.map(([name,detail,type,id])=>`<tr data-search="${esc(`${name} ${detail} ${type || ''}`.toLocaleLowerCase('ru'))}" ${isMachines?`data-machine-href="#directory/machines/${encodeURIComponent(id)}/edit"`:''}><td>${isMachines?`<a class="directory-machine-link" href="#directory/machines/${encodeURIComponent(id)}/edit" aria-label="Открыть технику ${esc(name)}"><strong>${esc(name)}</strong></a>`:`<strong>${esc(name)}</strong>`}</td>${hasDetail?`<td>${isCrops?`<span class="row"><i aria-hidden="true" style="display:inline-block;width:20px;height:20px;flex-shrink:0;border-radius:4px;border:1px solid var(--ds-border);background:${esc(detail)}"></i></span>`:esc(detail)}</td>`:''}${isMachines?`<td>${esc(type || 'Не указан')}</td><td>${formatTrackerOffset(projectMachines.find(machine => machine.id === id)?.trackerOffset ?? 0)}</td>`:''}${isImplements?`<td>${esc(type)}</td><td><button type="button" class="ds-icon-button" data-edit-implement="${id}" aria-label="Редактировать ${esc(name)}" title="Редактировать ${esc(name)}">${icon('edit')}</button></td>`:''}</tr>`).join('')}<tr id="directory-empty" hidden><td colspan="${columns}" class="empty">Ничего не найдено. Попробуйте другой запрос.</td></tr></tbody></table></div></section>${isCrops || isOperations || isImplements?'':`<p class="section-note">${isMachines?'Технику можно добавить из корневого проекта, изменить её тип и положение трекера для этого хозяйства. Изменения сохраняются только в браузере.':'В MVP-макете записи доступны только для просмотра.'}</p>`}`;
   $('#directory-search').addEventListener('input', e => {
     const query = e.target.value.trim().toLocaleLowerCase('ru');
     let visible = 0;
@@ -610,12 +678,58 @@ function renderDirectoryPage() {
     $('#directory-result-count').textContent = `${visible} из ${card.items.length}`;
     $('#directory-empty').hidden = visible > 0;
   });
+  if (isImplements) {
+    $('#add-implement').onclick=()=>openImplementEditor();
+    $$('[data-edit-implement]').forEach(button=>button.onclick=()=>openImplementEditor(Number(button.dataset.editImplement)));
+  }
   if (isMachines) {
     $('#add-machine').onclick = openMachinePicker;
     $$('[data-machine-href]').forEach(row => row.onclick = event => {
       if (!event.target.closest('a')) location.hash = row.dataset.machineHref;
     });
   }
+}
+function implementError(id, values) {
+  if (!values.name.trim()) return 'Введите название оборудования';
+  if (!Number.isFinite(values.width) || values.width<=0) return 'Укажите ширину захвата больше нуля';
+  if (!values.operations.length || values.operations.some(op=>!systemOperations.includes(op))) return 'Выберите хотя бы одну технологическую операцию';
+  if (implementsCatalog.some(item=>item.id!==id && item.name.trim().toLocaleLowerCase('ru')===values.name.trim().toLocaleLowerCase('ru'))) return 'Оборудование с таким названием уже есть';
+  if (id!==null && !implementsCatalog.some(item=>item.id===id)) return 'Оборудование не найдено';
+  return '';
+}
+function saveImplement(id, values) {
+  const error=implementError(id,values);
+  if (error) throw new Error(error);
+  const item=implementsCatalog.find(item=>item.id===id);
+  const changes={name:values.name.trim(),width:values.width,operations:[...new Set(values.operations)]};
+  if (item) {
+    const previousName=item.name;
+    Object.assign(item,changes);
+    works.forEach(work=>{if(work.implement===previousName) work.implement=item.name;});
+    if (draft?.implement===previousName) {draft.implement=item.name;draft.width=item.width;}
+  } else implementsCatalog.push({id:Math.max(0,...implementsCatalog.map(item=>item.id))+1,...changes});
+  persist();
+}
+function openImplementEditor(id=null) {
+  const item=implementsCatalog.find(item=>item.id===id);
+  modal(item?'Редактировать оборудование':'Добавить оборудование',`<form id="implement-form"><label>Название<input id="implement-name" required maxlength="100" value="${esc(item?.name || '')}" placeholder="Например, КПС-8"></label><label>Ширина захвата, м<input id="implement-width" required type="number" min="0.01" step="any" value="${item?.width ?? ''}" placeholder="Например, 8"></label><fieldset class="implement-operation-picker"><legend>Технологические операции</legend>${searchBox('implement-operation-search','Найти операцию')}<div class="implement-operation-list">${systemOperations.map(op=>`<label class="implement-operation-choice" data-operation-name="${esc(op.toLocaleLowerCase('ru'))}"><input type="checkbox" name="implement-operation" value="${esc(op)}" ${item?.operations.includes(op)?'checked':''}><span>${esc(op)}</span></label>`).join('')}<span id="implement-operation-empty" class="hint" hidden>Ничего не найдено</span></div></fieldset><p id="implement-error" class="fleet-error" role="alert"></p><div class="actions"><button type="button" class="btn" id="cancel-implement">Отмена</button><button type="submit" class="btn primary" id="save-implement" disabled>Сохранить</button></div></form>`,()=>{
+    const values=()=>({name:$('#implement-name').value,width:Number($('#implement-width').value),operations:$$('[name="implement-operation"]:checked').map(input=>input.value)});
+    const validate=()=>{$('#save-implement').disabled=!!implementError(id,values());$('#implement-error').textContent='';};
+    $('#implement-form').oninput=validate;
+    $('#implement-form').onchange=validate;
+    $('#implement-operation-search').addEventListener('input',event=>{
+      const query=event.target.value.trim().toLocaleLowerCase('ru');let visible=0;
+      $$('[data-operation-name]').forEach(label=>{label.hidden=!label.dataset.operationName.includes(query);if(!label.hidden)visible++;});
+      $('#implement-operation-empty').hidden=visible>0;
+    });
+    $('#cancel-implement').onclick=()=>$('#dialog').close();
+    $('#implement-form').onsubmit=event=>{
+      event.preventDefault();
+      try {saveImplement(id,values());} catch(error) {$('#implement-error').textContent=error.message;return;}
+      $('#dialog').close();renderDirectoryPage();toast('Оборудование сохранено');
+    };
+    validate();$('#implement-name').focus();
+  });
 }
 function machineTypePickerMarkup(selectedType = null) {
   return `<div class="root-machine-type operation-picker"><label for="machine-type">Тип техники</label><div class="operation-control"><input id="machine-type" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="machine-type-options" autocomplete="off" placeholder="Не указан" value="${esc(selectedType ?? '')}"><button type="button" class="machine-type-clear" id="machine-type-clear" aria-label="Сбросить тип техники" title="Сбросить тип техники" ${selectedType == null ? 'hidden' : ''}><span class="ds-symbol" aria-hidden="true">close</span></button><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="machine-type-options" class="operation-options" role="listbox" aria-label="Типы техники" hidden></div><span id="machine-type-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><p id="fleet-error" class="fleet-error" role="alert"></p>`;
@@ -734,7 +848,7 @@ function openMachinePicker() {
 $('#help').onclick=()=>modal('О макете Аврора Агро','<p>Кликабельный MVP по описанию «Аналог Гектеры». Основной путь: выберите работу → запустите расчёт → подтвердите площадь → добавьте материал → подтвердите работу.</p><p>Данные, схема полей и расчёты демонстрационные. Подключения к GPS, географического расчёта и серверного хранения нет. Изменения сохраняются только в этом браузере.</p><p>Демо-работы доступны за 30 сентября и 1 октября 2026 года. Технику можно переносить из демонстрационного корневого проекта и менять её тип, севооборот — редактировать.</p><div class="actions">'+button('Сбросить демо-данные','reset-demo')+'</div>',()=>$('#reset-demo').onclick=()=>{works=structuredClone(initialWorks);try{localStorage.removeItem('aurora-agro-demo-v1');}catch{}$('#dialog').close();location.reload();});
 function pageFromHash() {
   const target = location.hash.slice(1);
-  return ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
+  return ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || fields.some(field=>target===`fields/${field.id}/edit`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
 }
 window.addEventListener('hashchange',()=>{page=pageFromHash();drawing=false;drawPoints=[];render();window.scrollTo({top:0,behavior:'instant'});});
 page=pageFromHash();

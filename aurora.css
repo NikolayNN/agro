@@ -242,3 +242,23 @@ dialog{background:var(--ds-surface-raised);color:var(--ds-fg);border-radius:var(
 .map-panel.map-fullscreen-fallback{position:fixed;inset:0;z-index:1000}
 .map-panel:fullscreen .map-basemap,.map-panel.map-fullscreen-fallback .map-basemap{left:15px;right:auto;top:18px}
 .map-panel:fullscreen .map-tools,.map-panel.map-fullscreen-fallback .map-tools{left:15px;right:auto;top:70px}
+
+.field-card{position:relative;padding:0}
+.field-card-select{display:block;width:100%;text-align:left;background:transparent;color:inherit;padding:14px 46px 14px 12px}
+.field-card-edit{position:absolute;right:8px;top:8px;width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--ds-fg-muted)}
+.field-card-edit:hover{background:var(--ds-surface-hover);color:var(--ds-brand-text)}
+
+.implement-operation-picker{border:0;padding:0;margin:20px 0 0;min-width:0}
+.implement-operation-picker legend{font:var(--ds-type-ui);margin-bottom:10px;color:var(--ds-fg)}
+.implement-operation-picker .search{width:100%}
+.implement-operation-list{max-height:280px;overflow:auto;margin-top:10px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-control);padding:6px 10px}
+.implement-operation-list .implement-operation-choice{display:flex;align-items:center;gap:10px;padding:8px 0;margin:0;color:var(--ds-fg);cursor:pointer}
+.implement-operation-choice input{flex:none;margin:0}
+.implement-operation-choice[hidden]{display:none}
+
+/* Иконное действие: ghost-вариант DsIconButton. */
+.ds-icon-button{display:inline-flex;align-items:center;justify-content:center;flex:none;width:var(--ds-control-h);height:var(--ds-control-h);padding:0;border:1px solid transparent;border-radius:var(--ds-radius-md);background:transparent;color:var(--ds-fg-muted);cursor:pointer;transition:var(--ds-transition-control)}
+.ds-icon-button:hover{background:var(--ds-surface-hover)}
+.ds-icon-button:active{background:var(--ds-surface-active)}
+.ds-icon-button:focus-visible{outline:2px solid var(--ds-brand);outline-offset:2px}
+.ds-icon-button .icon.ds-symbol{width:20px;height:20px;font-size:20px}
