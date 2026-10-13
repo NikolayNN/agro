@@ -12,3 +12,22 @@ test('operation change clears incompatible equipment and updates compatible widt
   const c=setup();c.syncDraftImplement();assert.equal(c.draft.width,6);
   c.draft.operation='Культивация';c.syncDraftImplement();assert.equal(c.draft.implement,'');assert.equal(c.draft.width,0);
 });
+test('pending work opens with empty calculation parameters without changing saved work',()=>{
+  const source=fs.readFileSync('app.js','utf8');
+  const work={status:'pending',operation:'Сев',implement:'Сеялка',width:6};
+  const c={currentWork:()=>work,implementsCatalog:[],draft:null};vm.createContext(c);
+  vm.runInContext(source.slice(source.indexOf('function initDraft()'),source.indexOf('function filteredWorks()')),c);
+  c.initDraft();assert.equal(c.draft.operation,'');assert.equal(c.draft.implement,'');assert.equal(c.draft.width,0);assert.equal(work.operation,'Сев');
+});
+test('calculation requires a catalog operation and compatible equipment',()=>{
+  const c=setup();c.systemOperations=['Сев','Культивация'];c.getDriverNames=()=>['Иванов'];c.draft.driver='Иванов';
+  assert.equal(c.canCalculateOperation(),true);
+  c.draft.implement='Культиватор';assert.equal(c.canCalculateOperation(),false);
+  c.draft.operation='';c.draft.implement='';assert.equal(c.canCalculateOperation(),false);
+});
+test('preview scales equipment width to schematic field area and rejects invalid dimensions',()=>{
+  const c=setup();
+  assert.equal(c.previewCoverageWidth(12,64.8),2*c.previewCoverageWidth(6,64.8));
+  assert.equal(c.previewCoverageWidth(6,259.2),c.previewCoverageWidth(6,64.8)/2);
+  assert.equal(c.previewCoverageWidth(0,64.8),0);assert.equal(c.previewCoverageWidth(6,0),0);
+});

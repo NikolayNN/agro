@@ -4,7 +4,7 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const fmt = (value, digits = 2) => Number(value).toLocaleString('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const iconNames = {fields:'map',rotation:'autorenew',operations:'event_available',reports:'description',directory:'grid_view',help:'help',search:'search',sync:'sync',check:'check_circle',tractor:'agriculture',clock:'schedule',download:'download',plus:'add',arrow:'arrow_forward',layers:'layers',leaf:'eco',edit:'edit',play:'play_arrow'};
+const iconNames = {fields:'map',rotation:'autorenew',operations:'event_available',reports:'description',directory:'grid_view',help:'help',search:'search',sync:'sync',check:'check_circle',tractor:'agriculture',clock:'schedule',download:'download',plus:'add',arrow:'arrow_forward',layers:'layers',leaf:'eco',edit:'edit',play:'play_arrow',person:'person'};
 const icon = name => `<span class="icon ds-symbol" aria-hidden="true">${iconNames[name] || 'map'}</span>`;
 $$('[data-icon]').forEach(el => el.innerHTML = icon(el.dataset.icon));
 // Системный справочник культур: доступен только для чтения.
@@ -224,7 +224,7 @@ function searchBox(id, placeholder, value = '') { return `<div class="search">${
 function initDraft() {
   const w = currentWork();
   draft = w ? { ...w } : null;
-  if (draft?.status === 'pending') draft.width = implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width;
+  if (draft?.status === 'pending') Object.assign(draft, {operation:'', implement:'', width:0});
   result = null; step = 'settings'; areaMode = 'calculated'; manualArea = ''; zoom = 1;
 }
 function filteredWorks() { return works.filter(w => w.date === date && String(w.season) === season && (!status.length || status.includes(w.status)) && (!workField.length || workField.includes(String(w.field))) && (!workCrop.length || workCrop.includes(currentCrop(getField(w.field), w.season) || 'Культура не назначена')) && (!workMachine.length || workMachine.includes(w.machine)) && (!workDriver.length || workDriver.includes(w.driver))); }
@@ -273,7 +273,7 @@ function mapMarkup(field, calculated = false, tracks = true, showTitle = true) {
       <g id="map-world" transform="translate(350 280) scale(${zoom}) translate(-350 -280)">
         <rect width="700" height="560" fill="#c7d0ac"/><g class="map-landscape" filter="url(#texture)"><path d="M0 0H328L305 76 120 91 90 262 0 240Z" fill="url(#rows2)"/><path d="M353 0H700V176L559 162 535 65 330 76Z" fill="url(#rows)"/><path d="M0 273 90 286 117 451 79 560H0Z" fill="url(#trees)"/><path d="m548 191 152 6v291l-118-67-44-66Z" fill="url(#rows2)"/><path d="m166 486 288-8 92-85 41 71 113 54v42H118Z" fill="url(#rows)"/><path d="M161 125 503 102 541 347 439 451 195 461 142 333Z" fill="url(#rows)"/><path d="M115-10 132 48 103 162 117 293 142 463 101 570" fill="none" stroke="#81956c" stroke-width="28"/><path d="M115-10 132 48 103 162 117 293 142 463 101 570" fill="none" stroke="#e6dfbb" stroke-width="13"/><path d="M105 91 331 86 521 82 559 177 715 185" fill="none" stroke="#e1ddba" stroke-width="10"/><path d="m144 477 308-8 106-105 155 55" fill="none" stroke="#e4ddbc" stroke-width="11"/><path d="M536 0 546 50 594 73 627 131 670 143 710 113" fill="none" stroke="#96b5aa" stroke-width="19"/><path d="M0 71 68 93 80 161 55 207 0 196Z" fill="url(#trees)"/><path d="m562 464 70 12 68 42v42H533Z" fill="url(#trees)"/></g>
         <path d="M161 125 503 102 541 347 439 451 195 461 142 333Z" fill="#6d984920" stroke="#f1f9d6" stroke-width="5"/><path d="M161 125 503 102 541 347 439 451 195 461 142 333Z" fill="none" stroke="#3c713b" stroke-width="2"/>
-        ${tracks ? `<g clip-path="url(#field-clip)"><g class="coverage-layer"><path d="M173 139H499V430H173Z" fill="#86b957" opacity=".5"/><path d="M197 150V418M377 147V426" stroke="#e7b354" stroke-width="13" opacity=".85"/><path d="m496 109 31 144-24 128-17-249Z" fill="#d58d63" opacity=".8"/></g><g class="track-layer" stroke="#f5f8ce" fill="none" stroke-width="2.3">${trackLines}${turns}</g><path d="M180 148v104" fill="none" stroke="#285c3e" stroke-width="4"/><circle cx="180" cy="251" r="8" fill="#fff"/><circle cx="180" cy="251" r="4" fill="#285c3e"/></g>` : ''}
+        ${tracks ? `<g clip-path="url(#field-clip)"><g class="coverage-layer"><path d="M173 139H499V430H173Z" fill="#86b957" opacity=".5"/><path d="M197 150V418M377 147V426" stroke="#e7b354" stroke-width="13" opacity=".85"/><path d="m496 109 31 144-24 128-17-249Z" fill="#d58d63" opacity=".8"/></g><g id="coverage-preview" style="display:none" fill="none" stroke="#3a9b59" stroke-linecap="round" stroke-linejoin="round" opacity=".72">${trackLines}${turns}</g><g class="track-layer" stroke="#f5f8ce" fill="none" stroke-width="2.3">${trackLines}${turns}</g></g>` : ''}
         <text class="map-label" x="595" y="310">№ 08</text><text class="map-label" x="341" y="530">№ 21</text>
       <g id="draw-layer">${!drawing && field.contour ? `<polygon points="${field.contour.map(p=>p.join(',')).join(' ')}" fill="#21684844" stroke="#216848" stroke-width="3"/>${(field.exclusions || []).map(points=>`<polygon points="${points.map(p=>p.join(',')).join(' ')}" fill="#d58d6355" stroke="#ae5d22" stroke-width="3"/>`).join('')}` : ''}</g></g>
     </svg>
@@ -281,7 +281,7 @@ function mapMarkup(field, calculated = false, tracks = true, showTitle = true) {
     ${drawing ? '<div class="map-history"><button class="btn" type="button" id="undo-draw" aria-label="Отменить последнее действие" disabled>↶ Назад</button><button class="btn" type="button" id="redo-draw" aria-label="Повторить действие" disabled>Вперёд ↷</button></div>' : ''}
     <label class="map-basemap">${icon('layers')}<select id="map-basemap" aria-label="Подложка карты"><option value="scheme" ${mapBasemap==='scheme'?'selected':''}>Схема</option><option value="hybrid" ${mapBasemap==='hybrid'?'selected':''}>Гибрид</option><option value="satellite" ${mapBasemap==='satellite'?'selected':''}>Спутник</option></select></label>
     <div class="map-tools"><button data-zoom="in" aria-label="Увеличить карту">+</button><button data-zoom="out" aria-label="Уменьшить карту">−</button><button data-zoom="reset" aria-label="Вернуть масштаб">⌖</button><button type="button" class="map-fullscreen-toggle" aria-label="Развернуть карту на весь экран" title="Развернуть карту на весь экран" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg></button></div>
-    <div class="map-field-chip" ${drawing ? 'hidden' : ''}>${esc(field.name)}<small>${field.contour ? 'Площадь не рассчитана' : `${fmt(field.area)} га`}</small></div>
+    <div class="map-field-chip" ${drawing || !!operationFromRoute() ? 'hidden' : ''}>${esc(field.name)}<small>${field.contour ? 'Площадь не рассчитана' : `${fmt(field.area)} га`}</small></div>
     <div class="map-bottom">${tracks ? `<div class="map-legend"><span class="legend-item"><i></i>Контур поля</span>${tracks ? '<span class="legend-item"><i style="background:#9dbb79"></i>GPS-трек</span><span class="legend-item"><i class="yellow"></i>Перекрытия</span><span class="legend-item"><i class="red"></i>Пропуски</span>' : '<span class="legend-item">Условное расположение</span>'}</div>` : ''}<span class="map-scale">Схема</span></div>
 
   </div>`;
@@ -607,7 +607,7 @@ function openWorkColumns() {
 }
 function renderOperation(work) {
   if (selected !== work.id || !draft) { selected = work.id; initDraft(); }
-  main.innerHTML = `<div class="operation-layout"><aside class="operation-sidebar" aria-label="Расчёт операции"><div class="operation-back"><a class="btn subtle" href="#operations/day/${work.date}">← К списку работ</a>${statusBadge(work)}</div><section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></aside>${mapMarkup(getField(work.field), !!result || work.status === 'confirmed')}</div>`;
+  main.innerHTML = `<div class="operation-layout"><aside class="operation-sidebar" aria-label="Расчёт операции"><div class="operation-back"><a class="btn subtle" href="#operations/day/${work.date}">← К списку работ</a>${statusBadge(work)}</div><section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></aside>${mapMarkup(getField(work.field), !!result || work.status === 'confirmed', true, false)}</div>`;
   bindMap();
   bindEditor();
   revealOperationStep();
@@ -627,19 +627,44 @@ function revealOperationStep() {
   if(item.right>bounds.right)rail.scrollLeft+=item.right-bounds.right+4;
   else if(item.left<bounds.left)rail.scrollLeft-=bounds.left-item.left+4;
 }
+function completedOperationStepsMarkup() {
+  if (step === 'settings') return '';
+  return `<dl class="operation-completed-summary" aria-label="Данные завершённых шагов"><div><dt>Операция</dt><dd>${esc(draft.operation)}</dd></div><div><dt>Прицепное орудие</dt><dd>${esc(draft.implement)}</dd></div><div><dt>Ширина захвата</dt><dd>${fmt(draft.width,1)} м</dd></div>${step==='materials'?`<div><dt>Площадь к учёту</dt><dd>${fmt(draft.finalArea)} га</dd></div>`:''}</dl>`;
+}
 function editorMarkup() {
   const w = currentWork(), f = getField(w.field);
-  const header = `<h2>${esc(w.machine)} ${esc(w.plate)}</h2><div class="machine-line">${icon('clock')}<span>${w.time}</span><span>${w.duration}</span></div>`;
+  const header = `<h2>${esc(w.machine)} ${esc(w.plate)}</h2><div class="machine-line">${icon('clock')}<span>${w.time}</span><span>${w.duration}</span></div><div class="work-crop work-field">${icon('fields')}<strong>№ ${f.id} · ${esc(f.name)}</strong><span class="work-crop-label">${fmt(f.area)} га</span></div>`;
   if (w.status !== 'pending') return `${header}<div class="saved-message">${icon(w.status === 'confirmed' ? 'check' : 'help')}<h2>${w.status === 'confirmed' ? 'Работа подтверждена' : 'Работа отклонена'}</h2><p>${w.status === 'confirmed' ? `${esc(w.operation)} · ${fmt(w.finalArea)} га<br>${esc(w.material || 'Материалы не использовались')}${w.material ? ` · ${fmt(w.finalArea*w.rate)} ${esc(w.unit)}` : ''}<br>Сезон ${esc(w.season)} · ${esc(currentCrop(f,w.season) || 'Культура не назначена')}` : 'Эта работа не включена в отчёты.'}</p></div><div class="actions">${button('Вернуть к проверке','reopen')}${w.status === 'confirmed' ? button('Открыть отчёт','open-report',true) : ''}</div><p class="calculate-note">Данные сохранены в этом браузере.</p>`;
-  return `${header}<div class="work-crop">${icon('leaf')}<span class="work-crop-label">Культура</span><strong id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')}</strong></div>${operationStepperMarkup()}
-    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><div class="full operation-picker"><label for="implement">Прицепное орудие</label><div class="operation-control"><input id="implement" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="implement-options" autocomplete="off" required placeholder="Выберите или найдите орудие" value="${esc(draft.implement)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span><div id="implement-options" class="operation-options" role="listbox" aria-label="Прицепные орудия" hidden></div></div><span id="implement-search-status" class="visually-hidden" role="status" aria-live="polite"></span><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></div><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия.</p><div class="actions">${button('Отклонить работу','reject',false)}${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
-    ${step === 'area' ? `<div class="calculation"><span class="eyebrow">Чистая обработанная площадь · демо</span><div class="big-number">${fmt(result.net)} <small>га</small></div><div class="calculation-details"><div>Площадь поля<strong>${fmt(f.area)} га</strong></div><div>Перекрытия<strong>${fmt(result.overlap)} га</strong></div><div>Пропуски<strong>${fmt(result.gaps)} га</strong></div></div></div><h3>Какую площадь учесть?</h3><div class="area-choices">${[['calculated',`Расчётную · ${fmt(result.net)} га`],['field',`До площади поля · ${fmt(f.area)} га`],['manual','Ввести вручную']].map(([value,title]) => `<label class="choice"><input type="radio" name="area-mode" value="${value}" ${areaMode === value ? 'checked' : ''}>${title}</label>`).join('')}</div><label id="manual-area-label" ${areaMode !== 'manual' ? 'hidden' : ''}>Площадь, га<input id="manual-area" type="number" min="0.01" max="100000" step="0.01" value="${esc(manualArea)}"></label><p class="calculate-note">Перекрытия показаны отдельно. При повторном проходе или смещении трекера проверьте результат перед учётом.</p><div class="actions">${button('Назад','back-settings')}${button('Подтвердить площадь','accept-area',true)}</div>` : ''}
-    ${step === 'materials' ? `<div class="calculation"><span class="eyebrow">Площадь к учёту</span><div class="big-number">${fmt(draft.finalArea)} <small>га</small></div><span class="hint">${esc(draft.operation)} · сезон ${esc(draft.season)}</span></div><div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['',...new Set([...materialsCatalog.map(item=>item.name),...(draft.material?[draft.material]:[])])],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions">${button('Назад','back-area')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
-    ${step !== 'settings' ? `<div class="actions">${button('Отклонить работу','reject',false)}</div>` : ''}`;
+  return `${header}<label class="operation-season">Сезон<div class="operation-control"><select id="work-season">${options(['2025','2026','2027'],draft.season)}</select><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div></label><div class="work-crop" id="draft-crop-card" style="background:${esc(cropColors[currentCrop(f,draft.season)] || 'var(--ds-bg-sunken)')}">${icon('leaf')}<span class="work-crop-label">Культура</span><strong id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')}</strong></div><div class="operation-picker operation-driver"><label for="driver">Механизатор</label><div class="operation-control"><input id="driver" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="driver-options" autocomplete="off" required placeholder="Выберите механизатора" value="${esc(draft.driver)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span><div id="driver-options" class="operation-options" role="listbox" aria-label="Механизаторы" hidden></div></div><span id="driver-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div>${completedOperationStepsMarkup()}${operationStepperMarkup()}
+    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><div class="full operation-picker"><label for="implement">Прицепное орудие</label><div class="operation-control"><input id="implement" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="implement-options" autocomplete="off" required placeholder="Выберите или найдите орудие" value="${esc(draft.implement)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span><div id="implement-options" class="operation-options" role="listbox" aria-label="Прицепные орудия" hidden></div></div><span id="implement-search-status" class="visually-hidden" role="status" aria-live="polite"></span><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></div></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия.</p><div class="actions">${button('Отклонить работу','reject',false)}${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
+    ${step === 'area' ? `<div class="calculation"><span class="eyebrow">Чистая обработанная площадь</span><div class="big-number">${fmt(result.net)} <small>га</small></div><div class="calculation-details"><div>Площадь поля<strong>${fmt(f.area)} га</strong></div><div>Перекрытия<strong>${fmt(result.overlap)} га</strong></div><div>Пропуски<strong>${fmt(result.gaps)} га</strong></div></div></div><h3>Какую площадь учесть?</h3><div class="area-choices">${[['calculated',`Расчётную · ${fmt(result.net)} га`],['field',`До площади поля · ${fmt(f.area)} га`],['manual','Ввести вручную']].map(([value,title]) => `<label class="choice"><input type="radio" name="area-mode" value="${value}" ${areaMode === value ? 'checked' : ''}>${title}</label>`).join('')}</div><label id="manual-area-label" ${areaMode !== 'manual' ? 'hidden' : ''}>Площадь, га<input id="manual-area" type="number" min="0.01" max="100000" step="0.01" value="${esc(manualArea)}"></label><p class="calculate-note">Перекрытия показаны отдельно. При повторном проходе или смещении трекера проверьте результат перед учётом.</p><div class="actions operation-step-actions">${button('Назад','back-settings')}${button('Отклонить работу','reject')}${button('Подтвердить площадь','accept-area',true)}</div>` : ''}
+    ${step === 'materials' ? `<div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['',...new Set([...materialsCatalog.map(item=>item.name),...(draft.material?[draft.material]:[])])],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions operation-step-actions">${button('Назад','back-area')}${button('Отклонить работу','reject')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
+    `;
 }
 function redrawEditor() { $('.editor').innerHTML = editorMarkup(); bindEditor(); revealOperationStep(); $('#field-map').classList.toggle('calculated',!!result); }
 function compatibleImplements(operation) {
   return implementsCatalog.filter(item=>item.operations.includes(operation));
+}
+function previewCoverageWidth(width, area) {
+  if (!Number.isFinite(width) || !Number.isFinite(area) || width <= 0 || area <= 0) return 0;
+  const contour = [[161,125],[503,102],[541,347],[439,451],[195,461],[142,333]];
+  const schematicArea = Math.abs(contour.reduce((sum,[x,y],i)=>{const [nx,ny]=contour[(i+1)%contour.length];return sum+x*ny-nx*y;},0))/2;
+  // На условной схеме увеличиваем полосу для читаемости; соотношение ширин сохраняется.
+  return 3 * width * Math.sqrt(schematicArea / (area * 10000));
+}
+function updateCoveragePreview() {
+  const layer = $('#coverage-preview');
+  if (!layer) return;
+  const visible = !!operationFromRoute() && currentWork().status==='pending' && !result && compatibleImplements(draft.operation).some(item=>item.name===draft.implement);
+  layer.style.display = visible ? '' : 'none';
+  $('#field-map').classList.toggle('has-coverage-preview', visible);
+  layer.setAttribute('stroke-width', String(previewCoverageWidth(draft.width, getField(draft.field).area)));
+}
+function canCalculateOperation() {
+  return systemOperations.includes(draft?.operation) && compatibleImplements(draft.operation).some(item=>item.name===draft.implement) && getDriverNames().includes(draft.driver);
+}
+function updateCalculateButton() {
+  if ($('#calculate')) $('#calculate').disabled = !canCalculateOperation();
 }
 function syncDraftImplement() {
   const item=compatibleImplements(draft.operation).find(item=>item.name===draft.implement);
@@ -685,6 +710,8 @@ function bindOperationPicker(id = 'operation', names = systemOperations) {
     if(id==='implement'){draft.width=implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width;$('#width-text').textContent=fmt(draft.width,1)+' м';}
     close();
     if(id==='operation'){syncDraftImplement();bindOperationPicker('implement');}
+    updateCalculateButton();
+    updateCoveragePreview();
   };
   input.onfocus = () => { open(); input.select(); };
   input.onclick = () => { if (list.hidden) { open(); input.select(); } };
@@ -716,18 +743,72 @@ function bindOperationPicker(id = 'operation', names = systemOperations) {
   };
   validate();
 }
+function syncOperationSelects() {
+  $$('.operation-layout select').forEach(select=>select.refreshCustomSelect?.());
+}
+function enhanceOperationSelects() {
+  $$('.operation-layout select').forEach(select=>{
+    if (select.refreshCustomSelect) { select.refreshCustomSelect(); return; }
+    const label = select.getAttribute('aria-label') || [...(select.labels?.[0]?.childNodes || [])].filter(node=>node.nodeType===3).map(node=>node.textContent).join('').trim();
+    const wrapper=document.createElement('div');wrapper.className='operation-picker operation-select-adapter';
+    const trigger=document.createElement('button');trigger.type='button';trigger.className='operation-select-trigger';
+    trigger.setAttribute('role','combobox');trigger.setAttribute('aria-label',label);trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');trigger.setAttribute('aria-controls',select.id+'-custom-options');
+    const list=document.createElement('div');list.id=select.id+'-custom-options';list.className='operation-options';list.setAttribute('role','listbox');list.setAttribute('aria-label',label);list.hidden=true;
+    select.after(wrapper);wrapper.append(trigger,list);select.hidden=true;
+    select.parentElement.querySelector(':scope > .operation-chevron')?.remove();
+    let active=0;
+    const close=()=>{list.hidden=true;trigger.setAttribute('aria-expanded','false');trigger.removeAttribute('aria-activedescendant');};
+    const highlight=()=>{
+      [...list.children].forEach((item,i)=>item.classList.toggle('active',i===active));
+      if(list.children[active]){trigger.setAttribute('aria-activedescendant',list.children[active].id);list.children[active].scrollIntoView({block:'nearest'});}
+    };
+    const refresh=()=>{
+      trigger.disabled=select.disabled;
+      trigger.innerHTML=`<span>${esc(select.selectedOptions[0]?.textContent || 'Выберите значение')}</span><span class="ds-symbol" aria-hidden="true">expand_more</span>`;
+      list.innerHTML=[...select.options].map((option,i)=>`<div role="option" id="${select.id}-custom-option-${i}" data-index="${i}" aria-selected="${option.selected}" aria-disabled="${option.disabled}">${esc(option.textContent)}</div>`).join('');
+      if(select.disabled)close();
+    };
+    const open=()=>{syncOperationSelects();active=select.selectedIndex;list.hidden=false;trigger.setAttribute('aria-expanded','true');highlight();};
+    const choose=index=>{
+      const option=select.options[index];if(!option || option.disabled)return;
+      select.value=option.value;close();select.dispatchEvent(new Event('change',{bubbles:true}));syncOperationSelects();trigger.focus();
+    };
+    trigger.onclick=()=>list.hidden?open():close();
+    trigger.onblur=close;
+    trigger.onkeydown=event=>{
+      if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+        event.preventDefault();if(list.hidden)open();
+        const enabled=[...select.options].map((option,i)=>option.disabled?-1:i).filter(i=>i>=0);if(!enabled.length)return;
+        const current=enabled.indexOf(active);
+        active=event.key==='Home'?enabled[0]:event.key==='End'?enabled.at(-1):enabled[event.key==='ArrowDown'?(current+1)%enabled.length:(current<=0?enabled.length-1:current-1)];highlight();
+      } else if(event.key==='Enter' || event.key===' '){event.preventDefault();list.hidden?open():choose(active);}
+      else if(event.key==='Escape'){event.preventDefault();close();}
+      else if(event.key.length===1){const index=[...select.options].findIndex(option=>!option.disabled && option.textContent.toLocaleLowerCase('ru').startsWith(event.key.toLocaleLowerCase('ru')));if(index>=0){if(list.hidden)open();active=index;highlight();}}
+    };
+    list.onpointerdown=event=>event.preventDefault();
+    list.onclick=event=>{const option=event.target.closest('[data-index]');if(option)choose(Number(option.dataset.index));};
+    select.refreshCustomSelect=refresh;select.addEventListener('change',refresh);refresh();
+  });
+}
 function bindEditor() {
   if ($('#reopen')) $('#reopen').onclick = () => { currentWork().status = 'pending'; persist(); status = ['pending']; initDraft(); render(); toast('Работа возвращена к проверке'); };
   if ($('#open-report')) $('#open-report').onclick = () => { reportDateFrom = currentWork().date; reportDateTo = currentWork().date; location.hash = 'reports'; };
   bindOperationPicker();
   if($('#implement'))syncDraftImplement();
   bindOperationPicker('implement');
-  if ($('#driver')) $('#driver').oninput = e => draft.driver = e.target.value;
-  if ($('#work-season')) $('#work-season').onchange = e => { draft.season = e.target.value; $('#draft-crop').textContent = `${currentCrop(getField(draft.field),draft.season) || 'Культура не назначена'}`; };
+  bindOperationPicker('driver', getDriverNames());
+  updateCalculateButton();
+  updateCoveragePreview();
+  if ($('#work-season')) $('#work-season').onchange = e => {
+    draft.season = e.target.value;
+    const crop = currentCrop(getField(draft.field), draft.season);
+    $('#draft-crop').textContent = crop || 'Культура не назначена';
+    $('#draft-crop-card').style.background = cropColors[crop] || 'var(--ds-bg-sunken)';
+  };
   if ($('#calculate')) $('#calculate').onclick = () => {
     if (!systemOperations.includes(draft.operation)) { $('#operation').reportValidity(); return; }
     if (!compatibleImplements(draft.operation).some(item=>item.name===draft.implement)) { $('#implement').reportValidity(); return; }
-    if (!draft.driver.trim()) { $('#driver').reportValidity(); return; }
+    if (!getDriverNames().includes(draft.driver)) { $('#driver').reportValidity(); return; }
     const original = initialWorks.find(w => w.id === draft.id), f = getField(draft.field), ratio = draft.width/original.width;
     const net = Math.min(f.area, +(original.net * ratio).toFixed(2));
     result = { net, overlap: +(original.overlap * ratio).toFixed(2), gaps: +(f.area-net).toFixed(2) }; step = 'area'; redrawEditor();
@@ -745,6 +826,7 @@ function bindEditor() {
     draft.material = $('#material').value; draft.rate = Number($('#rate').value); draft.unit = $('#unit').value;
     $('#rate').disabled = !draft.material; $('#unit').disabled = !draft.material;
     $('#material-total').textContent = draft.material ? `${fmt(draft.finalArea * (draft.rate || 0))} ${draft.unit}` : 'Без материалов';
+    syncOperationSelects();
   };
   if ($('#material')) $('#material').onchange = () => {const item=materialsCatalog.find(item=>item.name===$('#material').value);if(item)$('#unit').value=item.unit;updateMaterial();};
   if ($('#rate')) $('#rate').oninput = updateMaterial;
@@ -756,6 +838,7 @@ function bindEditor() {
     Object.assign(currentWork(), draft, result, { status: 'confirmed' }); persist(); render(); toast(`«${name}»: работа подтверждена и включена в отчёт`);
   };
   if ($('#reject')) $('#reject').onclick = () => { currentWork().status = 'rejected'; persist(); render(); toast('Работа отклонена. Вернуть её можно через фильтр «Отклонена».'); };
+  enhanceOperationSelects();
 }
 function renderFields() {
   if (drawing) { renderFieldDrawing(); return; }
@@ -986,8 +1069,12 @@ function downloadCsv(name, rows) {
   const safeCell = value => { let text=String(value??'');if(/^[=+\-@\t\r]/.test(text))text="'"+text;return '"'+text.replace(/"/g,'""')+'"'; };
   const blob=new Blob(['\uFEFF'+rows.map(row=>row.map(safeCell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Выгрузка CSV подготовлена');
 }
+function getDriverNames() {
+  return [...new Set(works.map(work=>work.driver?.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+}
 const directoryCards = [
   {id:'machines',title:'Техника',icon:'tractor',description:'Машины, подключённые к этому хозяйству из корневого проекта.',detailTitle:'Госномер',get items(){return projectMachines.map(machine=>[machine.name,machine.plate,machine.type,machine.id]);}},
+  {id:'drivers',title:'Механизаторы',icon:'person',description:'Механизаторы хозяйства. Только для чтения.',get items(){return getDriverNames().map(name=>[name,'']);}},
   {id:'implements',title:'Прицепные орудия',icon:'layers',description:'Ширина захвата используется при расчёте работ.',detailTitle:'Ширина захвата',get items(){return implementsCatalog.map(item=>[item.name,`${fmt(item.width,1)} м`,item.operations.join(', '),item.id]);}},
   {id:'crops',title:'Культуры',icon:'leaf',description:'Системный список культур и их цветов. Только для чтения.',detailTitle:'Цвет',items:cropCatalog.map(c=>[c.name,c.color])},
   {id:'operations',title:'Технологические операции',icon:'operations',description:'Системный список операций для полевых работ. Только для чтения.',items:systemOperations.map(name=>[name,''])},
@@ -1228,6 +1315,6 @@ function pageFromHash() {
   const target = location.hash.slice(1);
   return /^operations\/day\/\d{4}-\d{2}-\d{2}$/.test(target) || /^operations\/\d+$/.test(target) && works.some(work => target === `operations/${work.id}`) || ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || fields.some(field=>target===`fields/${field.id}/edit`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
 }
-window.addEventListener('hashchange',()=>{page=pageFromHash();drawing=false;drawPoints=[];render();window.scrollTo({top:0,behavior:'instant'});});
+window.addEventListener('hashchange',()=>{page=pageFromHash();if(operationFromRoute()) { selected=operationFromRoute().id;initDraft(); }drawing=false;drawPoints=[];render();window.scrollTo({top:0,behavior:'instant'});});
 page=pageFromHash();
 initDraft();render();
