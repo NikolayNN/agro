@@ -367,7 +367,7 @@ function bindWorkFilters() {
   for (const [id, [value, save]] of Object.entries(bindings)) {
     const trigger = $('#'+id), menu = $('#'+id+'-menu'), search = menu.querySelector('input[type=search]'), radios = [...menu.querySelectorAll('input[type=checkbox]')];
     const close = () => { menu.hidePopover(); trigger.focus(); };
-    const commit = value => { save(value); close(); renderOperations(); $('#'+id).focus(); };
+    const commit = value => { if(id==='work-status' && activeWorkView==='system-pending') return; save(value); close(); renderOperations(); $('#'+id).focus(); };
     menu.addEventListener('beforetoggle', event => {
       if (event.newState !== 'open') return;
       search.value = ''; radios.forEach(radio => { radio.checked = value.includes(radio.value); radio.closest('label').hidden = false; radio.closest('label').dataset.selected = String(radio.checked); });
@@ -406,7 +406,7 @@ function saveWorkColumns() {
   allWorkView.order = [...workColumnOrder]; allWorkView.visible = [...workVisibleColumns];
   try { localStorage.setItem('aurora-agro-work-columns',JSON.stringify({order:workColumnOrder,visible:workVisibleColumns})); } catch {}
 }
-let workViews = [], activeWorkView = '';
+let workViews = [], activeWorkView = '', workViewDraftName = null;
 status = [];
 const allWorkView = captureWorkView();
 try {
@@ -414,6 +414,13 @@ try {
   const keys = workColumns.map(([key]) => key);
   if (Array.isArray(saved)) workViews = saved.filter(view => view && typeof view.id === 'string' && typeof view.name === 'string' && view.config && ['field','crop','machine','driver','status'].every(key => Array.isArray(view.config.filters?.[key]) && view.config.filters[key].every(value => typeof value === 'string')) && Array.isArray(view.config.order) && Array.isArray(view.config.visible)).map(view => ({...view,config:{...view.config,order:[...new Set([...view.config.order.filter(key => keys.includes(key)),...keys])],visible:[...new Set(view.config.visible.filter(key => keys.includes(key)))]}})).filter(view => view.config.visible.length);
 } catch {}
+const pendingView = workViews.find(view => view.id === 'system-pending') || workViews.find(view => view.name.toLocaleLowerCase('ru').replaceAll('ё','е') === 'ожидают расчета');
+if (pendingView) {
+  pendingView.id='system-pending'; pendingView.name='Ожидают расчёта'; pendingView.config.filters.status=['pending'];
+} else {
+  const config=captureWorkView(); config.filters.status=['pending'];
+  workViews.unshift({id:'system-pending',name:'Ожидают расчёта',config});
+}
 function captureWorkView() {
   return {filters:{field:[...workField],crop:[...workCrop],machine:[...workMachine],driver:[...workDriver],status:[...status]},order:[...workColumnOrder],visible:[...workVisibleColumns]};
 }
@@ -423,23 +430,24 @@ function applyWorkView(config) {
 }
 function workViewsMarkup() {
   const active = workViews.find(view => view.id === activeWorkView);
-  const dirty = active && JSON.stringify(active.config) !== JSON.stringify(captureWorkView());
-  return `<div class="work-views"><div class="tabs" role="group" aria-label="Слои работ"><button type="button" data-work-view="" class="${!active?'active':''}" aria-pressed="${!active}">Все</button>${workViews.map(view => `<button type="button" data-work-view="${esc(view.id)}" class="${view.id===activeWorkView?'active':''}" aria-pressed="${view.id===activeWorkView}">${esc(view.name)}${view.id===activeWorkView && dirty?' •':''}</button>`).join('')}<button type="button" id="add-work-view" aria-label="Создать слой">+</button></div><div class="row">${dirty?button('Сохранить изменения','update-work-view',true):''}${button('Сохранить как слой','save-work-view')}${active?'<details class="work-view-menu"><summary class="btn" aria-label="Действия со слоем">⋯</summary><div><button class="btn subtle" id="rename-work-view">Переименовать</button><button class="btn subtle" id="copy-work-view">Создать копию</button><button class="btn subtle" id="delete-work-view">Удалить слой</button></div></details>':''}</div></div>`;
+  const dirty = active && ((workViewDraftName !== null && workViewDraftName !== active.name) || JSON.stringify(active.config) !== JSON.stringify(captureWorkView()));
+  return `<div class="work-views"><div class="tabs" role="group" aria-label="Представления работ"><button type="button" data-work-view="" class="${!active?'active':''}" aria-pressed="${!active}">Все</button>${workViews.map(view => `<span class="work-view-tab ${view.id===activeWorkView?'active':''}"><button type="button" data-work-view="${esc(view.id)}" class="${view.id===activeWorkView?'active':''}" aria-pressed="${view.id===activeWorkView}">${esc(view.id===activeWorkView?(workViewDraftName ?? view.name):view.name)}</button>${view.id!=='system-pending'?`<button type="button" class="work-view-more" popovertarget="view-menu-${esc(view.id)}" aria-label="Действия с представлением: ${esc(view.name)}"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><circle cx="8" cy="3" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="8" cy="13" r="1"/></svg></button><div popover id="view-menu-${esc(view.id)}" class="work-view-popup"><button class="btn subtle" data-view-action="rename" data-view-id="${esc(view.id)}">Переименовать</button><button class="btn subtle" data-view-action="delete" data-view-id="${esc(view.id)}">Удалить</button></div>`:''}</span>`).join('')}<button type="button" id="add-work-view" aria-label="Создать представление из текущего состояния" title="Создать представление из текущего состояния">+</button></div><div class="row">${dirty?'<button type="button" class="btn subtle" id="reset-work-view">Сбросить изменения</button><button type="button" class="btn primary" popovertarget="work-save-menu" aria-label="Сохранить">Сохранить</button><div popover id="work-save-menu" class="work-view-popup work-save-popup"><button class="btn subtle" id="update-work-view">Сохранить в текущем представлении</button><button class="btn subtle" id="save-new-work-view">Сохранить как новое представление</button></div>':''}</div></div>`;
 }
 function persistWorkViews() {
   try { localStorage.setItem('aurora-agro-work-views',JSON.stringify(workViews)); }
-  catch { toast('Слой доступен в текущей вкладке. Браузер не смог сохранить его после закрытия.'); }
+  catch { toast('Представление доступно в текущей вкладке. Браузер не смог сохранить его после закрытия.'); }
 }
-function editWorkViewName(rename = false) {
-  const active = workViews.find(view => view.id === activeWorkView);
-  modal(rename?'Переименовать слой':'Сохранить как слой',`<form id="work-view-form"><label>Название слоя<input id="work-view-name" required maxlength="60" value="${esc(rename?active.name:'')}" placeholder="Например, Ожидают расчёта"></label><p id="work-view-error" class="fleet-error" role="alert"></p><div class="actions"><button type="button" class="btn" id="cancel-work-view">Отмена</button><button type="submit" class="btn primary">Сохранить</button></div></form>`,()=>{
+function editWorkViewName(rename = false, sourceId = null) {
+  const active = workViews.find(view => view.id === sourceId);
+  if (rename && sourceId==='system-pending') return;
+  modal(rename?'Переименовать представление':active?'Создать копию представления':'Новое представление',`<form id="work-view-form"><label>Название представления<input id="work-view-name" required maxlength="60" value="${esc(rename?(sourceId===activeWorkView?(workViewDraftName ?? active.name):active.name):'')}" placeholder="Например, Ожидают расчёта"></label><p id="work-view-error" class="fleet-error" role="alert"></p><div class="actions"><button type="button" class="btn" id="cancel-work-view">Отмена</button><button type="submit" class="btn primary">${rename?'Применить':'Создать представление'}</button></div></form>`,()=>{
     $('#cancel-work-view').onclick=()=>$('#dialog').close();
     $('#work-view-name').focus();
     $('#work-view-form').onsubmit=event=>{
       event.preventDefault(); const name=$('#work-view-name').value.trim();
-      if (!name || name.toLocaleLowerCase('ru')==='все' || workViews.some(view => (!rename || view.id!==activeWorkView) && view.name.toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru'))) { $('#work-view-error').textContent='Укажите уникальное название слоя.'; return; }
-      if(rename) active.name=name;
-      else { const view={id:crypto.randomUUID(),name,config:captureWorkView()}; workViews.push(view); activeWorkView=view.id; }
+      if (!name || name.toLocaleLowerCase('ru')==='все' || workViews.some(view => (!rename || view.id!==sourceId) && view.name.toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru'))) { $('#work-view-error').textContent='Укажите уникальное название представления.'; return; }
+      if(rename) { if(sourceId===activeWorkView) workViewDraftName=name; else active.name=name; }
+      else { const view={id:crypto.randomUUID(),name,config:captureWorkView()}; workViews.push(view); activeWorkView=view.id; workViewDraftName=null; applyWorkView(view.config); }
       persistWorkViews(); $('#dialog').close(); renderOperations();
     };
   });
@@ -447,22 +455,71 @@ function editWorkViewName(rename = false) {
 function bindWorkViews() {
   document.querySelectorAll('[data-work-view]').forEach(button=>button.onclick=()=>{
     if (!activeWorkView) { allWorkView.order=[...workColumnOrder]; allWorkView.visible=[...workVisibleColumns]; }
-    activeWorkView=button.dataset.workView;
+    if (button.dataset.workView===activeWorkView && activeWorkView) return;
+    activeWorkView=button.dataset.workView; workViewDraftName=null;
     applyWorkView(workViews.find(view=>view.id===activeWorkView)?.config || allWorkView); renderOperations();
   });
-  $('#add-work-view').onclick=$('#save-work-view').onclick=()=>editWorkViewName();
+  $('#add-work-view').onclick=()=>editWorkViewName();
   const active=workViews.find(view=>view.id===activeWorkView);
-  if (!active) return;
-  if ($('#update-work-view')) $('#update-work-view').onclick=()=>{active.config=captureWorkView();persistWorkViews();renderOperations();};
-  $('#rename-work-view').onclick=()=>editWorkViewName(true);
-  $('#copy-work-view').onclick=()=>editWorkViewName();
-  $('#delete-work-view').onclick=()=>{
-    modal('Удалить слой',`<p>Удалить слой «${esc(active.name)}»?</p><div class="actions"><button class="btn" id="cancel-delete-view">Отмена</button><button class="btn primary" id="confirm-delete-view">Удалить</button></div>`,()=>{
-      $('#cancel-delete-view').onclick=()=>$('#dialog').close();
-      $('#confirm-delete-view').onclick=()=>{workViews=workViews.filter(view=>view.id!==activeWorkView);activeWorkView='';persistWorkViews();applyWorkView(allWorkView);$('#dialog').close();renderOperations();};
+  if ($('#update-work-view')) $('#update-work-view').onclick=()=>{active.config=captureWorkView();active.name=workViewDraftName ?? active.name;workViewDraftName=null;persistWorkViews();renderOperations();};
+  if ($('#reset-work-view')) $('#reset-work-view').onclick=()=>{workViewDraftName=null;applyWorkView(active.config);renderOperations();};
+  if ($('#save-new-work-view')) $('#save-new-work-view').onclick=()=>{$('#work-save-menu').hidePopover();editWorkViewName();};
+  document.querySelectorAll('.work-views [popovertarget]').forEach(trigger=>{
+    const menu=document.getElementById(trigger.getAttribute('popovertarget'));
+    trigger.setAttribute('aria-haspopup','menu');
+    trigger.setAttribute('aria-expanded','false');
+    menu.setAttribute('role','menu');
+    menu.setAttribute('aria-label',trigger.getAttribute('aria-label'));
+    const items=[...menu.querySelectorAll('button')];
+    items.forEach(item=>{
+      item.className='work-menu-item'; item.setAttribute('role','menuitem'); item.tabIndex=-1;
+      const label=item.textContent, danger=item.dataset.viewAction==='delete';
+      const symbol=danger?'delete':item.dataset.viewAction==='rename'?'edit':item.id==='update-work-view'?'save':item.id==='reset-work-view'?'undo':'add';
+      item.dataset.tone=danger?'danger':'default'; item.dataset.menuLabel=label;
+      item.innerHTML='<span class="ds-symbol" aria-hidden="true">'+symbol+'</span><span>'+esc(label)+'</span>';
     });
-  };
+    let focusLast=false;
+    trigger.onkeydown=event=>{if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();focusLast=event.key==='ArrowUp';menu.showPopover();}};
+    menu.addEventListener('toggle',event=>{
+      trigger.setAttribute('aria-expanded',String(event.newState==='open'));
+      if(event.newState==='open'){(focusLast?items.at(-1):items[0])?.focus();focusLast=false;}
+    });
+    let search='',searchAt=0;
+    menu.onkeydown=event=>{
+      const i=items.indexOf(document.activeElement);
+      if(event.key==='Escape'){event.preventDefault();menu.hidePopover();trigger.focus();}
+      else if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+        event.preventDefault(); const next=event.key==='Home'?0:event.key==='End'?items.length-1:(i+(event.key==='ArrowDown'?1:-1)+items.length)%items.length;items[next]?.focus();
+      } else if(event.key==='Tab'){menu.hidePopover();trigger.focus();}
+      else if(event.key.length===1 && event.key!==' ' && !event.ctrlKey && !event.metaKey){
+        search=Date.now()-searchAt>700?event.key:search+event.key;searchAt=Date.now();
+        items.find(item=>item.dataset.menuLabel.toLocaleLowerCase().startsWith(search.toLocaleLowerCase()))?.focus();
+      }
+    };
+
+    menu.addEventListener('beforetoggle',event=>{
+      if(event.newState!=='open') return;
+      const rect=trigger.getBoundingClientRect();
+      menu.style.left=Math.max(8,Math.min(rect.right-(menu.id==='work-save-menu'?300:240),window.innerWidth-(menu.id==='work-save-menu'?308:248)))+'px';
+      menu.style.top=Math.min(rect.bottom+8,window.innerHeight-150)+'px';
+    });
+  });
+  document.querySelectorAll('[data-view-action]').forEach(button=>button.onclick=()=>{
+    const target=workViews.find(view=>view.id===button.dataset.viewId);
+    if(target.id==='system-pending') return;
+    button.closest('[popover]').hidePopover();
+    if (button.dataset.viewAction==='rename') return editWorkViewName(true,target.id);
+    modal('Удалить представление','<p>Удалить представление «'+esc(target.name)+'»?</p><div class="actions"><button class="btn" id="cancel-delete-view">Отмена</button><button class="btn primary" id="confirm-delete-view">Удалить</button></div>',()=>{
+      $('#cancel-delete-view').onclick=()=>$('#dialog').close();
+      $('#confirm-delete-view').onclick=()=>{
+        workViews=workViews.filter(view=>view.id!==target.id);
+        if(activeWorkView===target.id){activeWorkView='';workViewDraftName=null;applyWorkView(allWorkView);}
+        persistWorkViews();$('#dialog').close();renderOperations();
+      };
+    });
+  });
 }
+
 function workTableCell(work,key) {
   if (key === 'field') return '<span class="field-no">'+String(work.field).padStart(2,'0')+'</span><strong>'+esc(getField(work.field).name)+'</strong>';
   if (key === 'crop') return esc(currentCrop(getField(work.field),work.season) || 'Культура не назначена');
@@ -491,25 +548,62 @@ function renderOperations() {
   const visibleColumns = orderedColumns.filter(([key]) => workVisibleColumns.includes(key));
   main.innerHTML = `${heading('Полевые операции', 'Выберите работу для просмотра трека и расчёта площади.', button('Обновить треки', 'sync', false, 'sync'))}
     ${workViewsMarkup()}
-    <div class="toolbar"><div class="row">${workFilterMarkup('work-field','Поле',filterFields,workField)}${workFilterMarkup('work-crop','Культура',filterCrops,workCrop)}${workFilterMarkup('work-machine','Техника',filterMachines,workMachine)}${workFilterMarkup('work-driver','Механизатор',filterDrivers,workDriver)}${workFilterMarkup('work-status','Статус',[['pending','Ждёт расчёта'],['confirmed','Подтверждена'],['rejected','Отклонена']],status)}</div><details class="work-columns"><summary class="btn">Колонки</summary><div class="work-columns-menu">${orderedColumns.map(([key,title],index) => `<div class="work-column-row"><label><input type="checkbox" data-work-column="${key}" aria-label="${esc(title)}" ${workVisibleColumns.includes(key) ? 'checked' : ''} ${workVisibleColumns.length === 1 && workVisibleColumns.includes(key) ? 'disabled' : ''}>${title}</label><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="-1" aria-label="Выше: ${esc(title)}" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="1" aria-label="Ниже: ${esc(title)}" ${index === orderedColumns.length-1 ? 'disabled' : ''}>↓</button></div>`).join('')}<button type="button" class="btn subtle" id="reset-work-columns">По умолчанию</button></div></details></div>
+    <div class="toolbar"><div class="row">${workFilterMarkup('work-field','Поле',filterFields,workField)}${workFilterMarkup('work-crop','Культура',filterCrops,workCrop)}${workFilterMarkup('work-machine','Техника',filterMachines,workMachine)}${workFilterMarkup('work-driver','Механизатор',filterDrivers,workDriver)}${workFilterMarkup('work-status','Статус',[['pending','Ждёт расчёта'],['confirmed','Подтверждена'],['rejected','Отклонена']],status)}</div><button type="button" class="btn" id="configure-work-columns"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>Колонки</button></div>
     <section class="table-panel"><div class="table-scroll"><table><thead><tr>${visibleColumns.map(([,title]) => `<th>${title}</th>`).join('')}<th></th></tr></thead><tbody>${list.map(w => `<tr class="clickable" data-work="${w.id}">${visibleColumns.map(([key]) => `<td>${workTableCell(w,key)}</td>`).join('')}<td><button class="table-button" aria-label="Открыть работу ${esc(getField(w.field).name)}">${icon('arrow')}</button></td></tr>`).join('') || `<tr><td colspan="${visibleColumns.length+1}" class="empty">Работы не найдены</td></tr>`}</tbody></table></div></section>`;
   $('#sync').onclick = () => toast('Демо-треки актуальны. Подключение к Авроре GPS появится в рабочей версии.');
   bindWorkFilters();
+  if(activeWorkView==='system-pending') {
+    const trigger=$('#work-status');
+    trigger.disabled=true; trigger.title='Статус закреплён для этого представления';
+    trigger.parentElement.querySelectorAll('[data-filter-clear]').forEach(button=>button.hidden=true);
+  }
   bindWorkViews();
-  const refreshColumns = selector => { saveWorkColumns(); renderOperations(); $('.work-columns').open = true; $(selector)?.focus(); };
-  document.querySelectorAll('[data-work-column]').forEach(input => input.onchange = () => {
-    workVisibleColumns = [...document.querySelectorAll('[data-work-column]:checked')].map(item => item.dataset.workColumn);
-    refreshColumns('[data-work-column="'+input.dataset.workColumn+'"]');
-  });
-  document.querySelectorAll('[data-column-move]').forEach(button => button.onclick = () => {
-    const index = workColumnOrder.indexOf(button.dataset.columnMove), target = index + Number(button.dataset.direction);
-    if (target < 0 || target >= workColumnOrder.length) return;
-    [workColumnOrder[index],workColumnOrder[target]] = [workColumnOrder[target],workColumnOrder[index]];
-    refreshColumns('[data-column-move="'+button.dataset.columnMove+'"][data-direction="'+button.dataset.direction+'"]');
-  });
-  $('#reset-work-columns').onclick = () => { workColumnOrder = workColumns.map(([key]) => key); workVisibleColumns = [...defaultWorkColumns]; refreshColumns('#reset-work-columns'); };
+  $('#configure-work-columns').onclick = openWorkColumns;
   $$('[data-work]').forEach(row => row.onclick = () => { location.hash = `operations/${row.dataset.work}`; });
 
+}
+function openWorkColumns() {
+  let visible=workColumnOrder.filter(key=>workVisibleColumns.includes(key));
+  let hidden=workColumnOrder.filter(key=>!workVisibleColumns.includes(key));
+  let draggedColumn=null;
+  const label=key=>workColumns.find(([id])=>id===key)[1];
+  modal('Настройка колонок', '<p>Перетащите колонки, чтобы изменить порядок или видимость.</p><div class="column-lists" id="column-lists"></div><p class="hint" id="column-status" role="status">С клавиатуры: Alt + ↑/↓ — порядок, Alt + ←/→ — перенос.</p><div class="column-dialog-actions"><button class="btn subtle" id="columns-default">По умолчанию</button><div class="row"><button class="btn" id="columns-cancel">Отмена</button><button class="btn primary" id="columns-apply">Применить</button></div></div>',()=>{
+    const dialog=$('#dialog');dialog.classList.add('columns-dialog');
+    dialog.addEventListener('close',()=>dialog.classList.remove('columns-dialog'),{once:true});
+    const renderLists=()=>{
+      $('#column-lists').innerHTML=[['visible','Видимые',visible],['hidden','Скрытые',hidden]].map(([group,title,items])=>'<section><h3>'+title+' <span class="hint">'+items.length+'</span></h3><div class="column-dropzone" data-column-group="'+group+'" aria-label="'+title+' колонки">'+items.map(key=>'<div class="column-card" draggable="true" data-column-key="'+key+'"><button class="column-drag" type="button" aria-label="Переместить: '+esc(label(key))+'"><span class="ds-symbol" aria-hidden="true">drag_indicator</span></button><span>'+esc(label(key))+'</span><button type="button" class="column-transfer" data-transfer="'+key+'" aria-label="'+(group==='visible'?'Скрыть: ':'Показать: ')+esc(label(key))+'">'+(group==='visible'?'→':'←')+'</button></div>').join('')+'</div></section>').join('');
+      document.querySelectorAll('.column-card').forEach(card=>{
+        card.ondragstart=event=>{draggedColumn=card.dataset.columnKey;event.dataTransfer.setData('text/plain',draggedColumn);event.dataTransfer.effectAllowed='move';};
+        card.ondragend=()=>{draggedColumn=null;};
+      });
+      document.querySelectorAll('[data-column-group]').forEach(zone=>{
+        zone.ondragover=event=>{event.preventDefault();event.dataTransfer.dropEffect='move';};
+        zone.ondrop=event=>{event.preventDefault();if(!draggedColumn)return;const row=event.target.closest('[data-column-key]');const before=row?(event.clientY<row.getBoundingClientRect().top+row.offsetHeight/2?row.dataset.columnKey:row.nextElementSibling?.dataset.columnKey):null;move(draggedColumn,zone.dataset.columnGroup,before);draggedColumn=null;};
+      });
+      document.querySelectorAll('[data-transfer]').forEach(button=>button.onclick=()=>move(button.dataset.transfer,visible.includes(button.dataset.transfer)?'hidden':'visible'));
+      document.querySelectorAll('.column-drag').forEach(handle=>{
+        handle.onkeydown=event=>{
+          if(!event.altKey || !['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;
+          event.preventDefault();const key=handle.closest('[data-column-key]').dataset.columnKey,group=visible.includes(key)?'visible':'hidden',items=group==='visible'?visible:hidden;
+          if(event.key==='ArrowLeft'||event.key==='ArrowRight')move(key,event.key==='ArrowLeft'?'visible':'hidden');
+          else {const index=items.indexOf(key),target=index+(event.key==='ArrowUp'?-1:1);if(target<0||target>=items.length)return;[items[index],items[target]]=[items[target],items[index]];renderLists();}
+          document.querySelector('[data-column-key="'+key+'"] .column-drag')?.focus();
+        };
+        handle.draggable=true;
+      });
+    };
+    const move=(key,group,before=null)=>{
+      if(group==='hidden'&&visible.includes(key)&&visible.length===1){$('#column-status').textContent='Оставьте хотя бы одну видимую колонку.';return;}
+      if(before===key)return;
+      visible=visible.filter(id=>id!==key);hidden=hidden.filter(id=>id!==key);
+      const items=group==='visible'?visible:hidden,index=items.indexOf(before);items.splice(index<0?items.length:index,0,key);
+      renderLists();$('#column-status').textContent='Колонка «'+label(key)+'» перемещена.';
+    };
+    renderLists();
+    $('#columns-default').onclick=()=>{visible=[...defaultWorkColumns];hidden=workColumns.map(([key])=>key).filter(key=>!visible.includes(key));renderLists();};
+    $('#columns-cancel').onclick=()=>dialog.close();
+    $('#columns-apply').onclick=()=>{workVisibleColumns=[...visible];workColumnOrder=[...visible,...hidden];saveWorkColumns();dialog.close();renderOperations();$('#configure-work-columns').focus();};
+  });
 }
 function renderOperation(work) {
   if (selected !== work.id || !draft) { selected = work.id; initDraft(); }
