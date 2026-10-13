@@ -111,14 +111,25 @@ const fields = [
   { id: 34, name: 'Дубрава', area: 69.1, rotation: { 2024: 'Пшеница озимая', 2025: 'Кукуруза на зерно', 2026: 'Рапс озимый' } },
   { id: 35, name: 'Дальнее южное', area: 73.4, rotation: { 2024: 'Пар', 2025: 'Рапс озимый', 2026: 'Пшеница озимая' } },
 ];
+function shiftDemoDate(value,days) {
+  const day=new Date(value+'T12:00:00Z');day.setUTCDate(day.getUTCDate()+days);return day.toISOString().slice(0,10);
+}
+function getDemoDates(now=new Date()) {
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Minsk',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now).map(part=>[part.type,part.value]));
+  const today=parts.year+'-'+parts.month+'-'+parts.day;
+  return {today,yesterday:shiftDemoDate(today,-1)};
+}
+const demoDates = getDemoDates();
 const initialWorks = [
-  { id: 1, field: 12, date: '2026-10-01', machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '08:15–12:40', duration: '4 ч 25 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 61.42, overlap: 2.16, status: 'pending', season: '2026' },
-  { id: 2, field: 8, date: '2026-10-01', machine: 'John Deere 8430', plate: 'АВ 1934', driver: 'Иванов Сергей', time: '07:30–11:15', duration: '3 ч 45 мин', operation: 'Культивация', implement: 'КПС-8', width: 8, net: 40.15, overlap: 1.12, status: 'pending', season: '2026' },
-  { id: 3, field: 3, date: '2026-10-01', machine: 'МТЗ-1523', plate: 'АВ 7102', driver: 'Петров Николай', time: '09:10–13:20', duration: '4 ч 10 мин', operation: 'Химобработка (гербициды)', implement: 'Amazone UX 4200', width: 24, net: 73.61, overlap: 3.4, status: 'pending', season: '2026' },
-  { id: 4, field: 15, date: '2026-10-01', machine: 'Кировец К-742', plate: 'АВ 3396', driver: 'Смирнов Андрей', time: '08:00–11:45', duration: '3 ч 45 мин', operation: 'Вспашка', implement: 'ППО-8-40', width: 3.2, net: 34.22, overlap: 1.08, status: 'pending', season: '2026' },
-  { id: 5, field: 6, date: '2026-10-01', machine: 'John Deere 8430', plate: 'АВ 1934', driver: 'Иванов Сергей', time: '13:00–17:40', duration: '4 ч 40 мин', operation: 'Культивация', implement: 'КПС-8', width: 8, net: 87.34, overlap: 2.01, status: 'confirmed', finalArea: 87.34, season: '2026', material: '', rate: 0 },
-  { id: 6, field: 21, date: '2026-10-01', machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '13:30–18:10', duration: '4 ч 40 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 51.2, overlap: 1.3, status: 'confirmed', finalArea: 51.2, season: '2026', material: 'Пшеница · Элегия', rate: 220, unit: 'кг' },
-  { id: 7, field: 8, date: '2026-09-30', machine: 'МТЗ-1523', plate: 'АВ 7102', driver: 'Петров Николай', time: '08:00–11:20', duration: '3 ч 20 мин', operation: 'Химобработка (гербициды)', implement: 'Amazone UX 4200', width: 24, net: 41.1, overlap: .8, status: 'confirmed', finalArea: 41.1, season: '2026', material: 'СЗР · демо-препарат', rate: 1.2, unit: 'л' },
+  { id: 1, field: 12, date: demoDates.today, machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '08:15–12:40', duration: '4 ч 25 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 61.42, overlap: 2.16, status: 'pending', season: '2026' },
+  { id: 2, field: 8, date: demoDates.today, machine: 'John Deere 8430', plate: 'АВ 1934', driver: 'Иванов Сергей', time: '07:30–11:15', duration: '3 ч 45 мин', operation: 'Культивация', implement: 'КПС-8', width: 8, net: 40.15, overlap: 1.12, status: 'pending', season: '2026' },
+  { id: 3, field: 3, date: demoDates.today, machine: 'МТЗ-1523', plate: 'АВ 7102', driver: 'Петров Николай', time: '09:10–13:20', duration: '4 ч 10 мин', operation: 'Химобработка (гербициды)', implement: 'Amazone UX 4200', width: 24, net: 73.61, overlap: 3.4, status: 'pending', season: '2026' },
+  { id: 4, field: 15, date: demoDates.today, machine: 'Кировец К-742', plate: 'АВ 3396', driver: 'Смирнов Андрей', time: '08:00–11:45', duration: '3 ч 45 мин', operation: 'Вспашка', implement: 'ППО-8-40', width: 3.2, net: 34.22, overlap: 1.08, status: 'pending', season: '2026' },
+  { id: 5, field: 6, date: demoDates.today, machine: 'John Deere 8430', plate: 'АВ 1934', driver: 'Иванов Сергей', time: '13:00–17:40', duration: '4 ч 40 мин', operation: 'Культивация', implement: 'КПС-8', width: 8, net: 87.34, overlap: 2.01, status: 'confirmed', finalArea: 87.34, season: '2026', material: '', rate: 0 },
+  { id: 6, field: 21, date: demoDates.today, machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '13:30–18:10', duration: '4 ч 40 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 51.2, overlap: 1.3, status: 'confirmed', finalArea: 51.2, season: '2026', material: 'Пшеница · Элегия', rate: 220, unit: 'кг' },
+  { id: 7, field: 8, date: demoDates.yesterday, machine: 'МТЗ-1523', plate: 'АВ 7102', driver: 'Петров Николай', time: '08:00–11:20', duration: '3 ч 20 мин', operation: 'Химобработка (гербициды)', implement: 'Amazone UX 4200', width: 24, net: 41.1, overlap: .8, status: 'confirmed', finalArea: 41.1, season: '2026', material: 'СЗР · демо-препарат', rate: 1.2, unit: 'л' },
+  { id: 8, field: 12, date: demoDates.yesterday, machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '09:00–13:10', duration: '4 ч 10 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 60.75, overlap: 1.85, status: 'pending', season: '2026' },
+  { id: 9, field: 15, date: demoDates.yesterday, machine: 'Кировец К-742', plate: 'АВ 3396', driver: 'Смирнов Андрей', time: '14:00–17:30', duration: '3 ч 30 мин', operation: 'Вспашка', implement: 'ППО-8-40', width: 3.2, net: 33.9, overlap: 1.2, status: 'pending', season: '2026' },
 ];
 const materialTypes = ['Семена','Удобрения','СЗР'];
 const materialUnits = ['кг','л','т'];
@@ -140,21 +151,23 @@ try {
   if (Array.isArray(saved?.fields) && saved.fields.length && saved.fields.every(f=>Number.isSafeInteger(f.id) && f.id>0 && typeof f.name==='string' && Number.isFinite(f.area) && f.rotation && typeof f.rotation==='object' && (!f.contour || (Array.isArray(f.contour) && f.contour.length>=3 && f.contour.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))))) && new Set(saved.fields.map(f=>f.id)).size===saved.fields.length) fields.splice(0,fields.length,...saved.fields);
   if (Array.isArray(saved?.materialsCatalog) && saved.materialsCatalog.every(item=>Number.isSafeInteger(item.id) && item.id>0 && typeof item.name==='string' && item.name.trim() && materialTypes.includes(item.type) && materialUnits.includes(item.unit)) && new Set(saved.materialsCatalog.map(item=>item.id)).size===saved.materialsCatalog.length && new Set(saved.materialsCatalog.map(item=>item.name.trim().toLocaleLowerCase('ru'))).size===saved.materialsCatalog.length) materialsCatalog=saved.materialsCatalog;
   if (Array.isArray(saved?.implementsCatalog) && saved.implementsCatalog.length && saved.implementsCatalog.every(item=>Number.isSafeInteger(item.id) && item.id>0 && typeof item.name==='string' && item.name.trim() && Number.isFinite(item.width) && item.width>0 && Array.isArray(item.operations) && item.operations.length && item.operations.every(op=>systemOperations.includes(op))) && new Set(saved.implementsCatalog.map(item=>item.id)).size===saved.implementsCatalog.length && new Set(saved.implementsCatalog.map(item=>item.name.trim().toLocaleLowerCase('ru'))).size===saved.implementsCatalog.length) implementsCatalog=saved.implementsCatalog;
-  if (saved?.works && Array.isArray(saved.works) && saved.works.length === initialWorks.length) works = saved.works;
+  if (Array.isArray(saved?.works) && saved.works.every(w=>w && initialWorks.some(initial=>initial.id===w.id)) && new Set(saved.works.map(w=>w.id)).size===saved.works.length) works = initialWorks.map(initial=>saved.works.find(w=>w.id===initial.id) || structuredClone(initial));
   if (Array.isArray(saved?.addedFields)) saved.addedFields.forEach(f => {
     if (Number.isSafeInteger(f.id) && f.id > 0 && !fields.some(existing=>existing.id===f.id) && typeof f.name==='string' && Array.isArray(f.contour) && f.contour.length>=3 && f.contour.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))) fields.push({id:f.id,name:f.name,area:0,rotation:{},contour:f.contour,exclusions:Array.isArray(f.exclusions) ? f.exclusions.filter(points=>Array.isArray(points) && points.length>=3 && points.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))) : [],exclusionNames:Array.isArray(f.exclusionNames) ? f.exclusionNames.map((name,i)=>typeof name==='string' && name.trim() ? name.trim() : 'Участок '+(i+1)) : []});
   });
   if (saved?.rotation) fields.forEach(f => { if (saved.rotation[f.id]) f.rotation = saved.rotation[f.id]; });
   if (Array.isArray(saved?.projectMachines) && saved.projectMachines.length >= AuroraFleet.initialProjectMachines.length) projectMachines = AuroraFleet.normalizeProjectMachines(saved.projectMachines);
 } catch { /* В приватном режиме макет продолжает работать без сохранения. */ }
+works.forEach(work=>{const initial=initialWorks.find(item=>item.id===work.id);if(initial)work.date=initial.date;});
 // Однозначные переименования старого демо. Обобщённые виды требуют уточнения.
 works.forEach(w => { w.operation = ({ 'Посев': 'Сев', 'Пахота': 'Вспашка' })[w.operation] || w.operation; });
 fields.forEach(field => Object.keys(field.rotation).forEach(year => {
   if (field.rotation[year] === 'Кукуруза') field.rotation[year] = 'Кукуруза на зерно';
 }));
-let page = 'operations', season = '2026', date = '2026-10-01', status = 'pending', selected = 1, step = 'settings';
+let page = 'operations', season = '2026', date = demoDates.today, status = ['pending'], selected = 1, step = 'settings';
 let draft = null, result = null, areaMode = 'calculated', manualArea = '', fieldSelected = 12, zoom = 1;
-let workQuery = '', fieldQuery = '', reportKind = 'director', reportDateFrom = '2026-10-01', reportDateTo = '2026-10-01';
+let workField = [], workCrop = [], workMachine = [], workDriver = [];
+let fieldQuery = '', reportKind = 'director', reportDateFrom = demoDates.today, reportDateTo = demoDates.today;
 let reportGroup = 'field', reportMaterial = true, reportOverlap = false, visibleSeasons = [2024, 2025, 2026];
 let drawing = false, drawPoints = [], mapBasemap = 'scheme';
 const main = $('#main');
@@ -214,7 +227,7 @@ function initDraft() {
   if (draft?.status === 'pending') draft.width = implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width;
   result = null; step = 'settings'; areaMode = 'calculated'; manualArea = ''; zoom = 1;
 }
-function filteredWorks() { return works.filter(w => w.date === date && String(w.season) === season && (status === 'all' || w.status === status) && `${getField(w.field).name} ${w.machine} ${w.driver}`.toLowerCase().includes(workQuery.toLowerCase())); }
+function filteredWorks() { return works.filter(w => w.date === date && String(w.season) === season && (!status.length || status.includes(w.status)) && (!workField.length || workField.includes(String(w.field))) && (!workCrop.length || workCrop.includes(currentCrop(getField(w.field), w.season) || 'Культура не назначена')) && (!workMachine.length || workMachine.includes(w.machine)) && (!workDriver.length || workDriver.includes(w.driver))); }
 function statusBadge(w) { return `<span class="badge ${w.status === 'confirmed' ? 'green' : w.status === 'rejected' ? 'gray' : ''}">${w.status === 'confirmed' ? '✓ Подтверждена' : w.status === 'rejected' ? 'Отклонена' : 'Ждёт расчёта'}</span>`; }
 function fieldFromEditRoute() {
   const match = /^fields\/(\d+)\/edit$/.exec(page);
@@ -225,15 +238,23 @@ function updateNav() {
   const directory = directoryCards.find(card => page === `directory/${card.id}`);
   const editingMachine = machineFromEditRoute();
   const editingField = fieldFromEditRoute();
-  $('#breadcrumb').innerHTML = editingField ? `<a href="#fields">Поля</a><span>/</span>${esc(editingField.name)}<span>/</span>Редактирование` : editingMachine ? `<a href="#directory">Справочники</a><span>/</span><a href="#directory/machines">Техника</a><span>/</span>${esc(editingMachine.name)}` : directory ? `<a href="#directory">Справочники</a><span>/</span>${directory.title}` : titles[page];
-  document.title = `${editingField ? `Редактирование: ${editingField.name}` : editingMachine ? editingMachine.name : directory?.title || titles[page]} — Аврора Агро`;
-  $$('nav a').forEach(a => { const active = a.dataset.page === page || (a.dataset.page === 'fields' && !!editingField) || (a.dataset.page === 'directory' && (!!directory || !!editingMachine)); a.classList.toggle('active', active); if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const operation = operationFromRoute();
+  $('#breadcrumb').innerHTML = operation ? `<a href="#operations">Операции</a><span>/</span>Работа № ${String(operation.id).padStart(3,'0')}` : editingField ? `<a href="#fields">Поля</a><span>/</span>${esc(editingField.name)}<span>/</span>Редактирование` : editingMachine ? `<a href="#directory">Справочники</a><span>/</span><a href="#directory/machines">Техника</a><span>/</span>${esc(editingMachine.name)}` : directory ? `<a href="#directory">Справочники</a><span>/</span>${directory.title}` : titles[page];
+  document.title = `${operation ? `Работа № ${String(operation.id).padStart(3,'0')}` : editingField ? `Редактирование: ${editingField.name}` : editingMachine ? editingMachine.name : directory?.title || titles[page]} — Аврора Агро`;
+  $$('nav a').forEach(a => { const active = a.dataset.page === page || (a.dataset.page === 'operations' && !!operation) || (a.dataset.page === 'fields' && !!editingField) || (a.dataset.page === 'directory' && (!!directory || !!editingMachine)); a.classList.toggle('active', active); if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   $('#pending-count').textContent = works.filter(w => w.status === 'pending' && String(w.season) === season).length;
 }
+function operationFromRoute() {
+  const match = /^operations\/(\d+)$/.exec(page);
+  return match ? works.find(work => work.id === Number(match[1])) : null;
+}
 function render() {
+  const operation = operationFromRoute();
+  main.classList.toggle('operation-page', !!operation);
   main.classList.toggle('fields-page', page === 'fields' || !!fieldFromEditRoute());
   updateNav();
-  if (fieldFromEditRoute()) renderFieldDrawing(fieldFromEditRoute());
+  if (operation) renderOperation(operation);
+  else if (fieldFromEditRoute()) renderFieldDrawing(fieldFromEditRoute());
   else if (machineFromEditRoute()) renderMachineEditorPage();
   else if (page.startsWith('directory/')) renderDirectoryPage();
   else ({ operations: renderOperations, fields: renderFields, rotation: renderRotation, reports: renderReports, directory: renderDirectory })[page]();
@@ -295,34 +316,151 @@ function bindMap() {
     $('#map-world').setAttribute('transform', `translate(350 280) scale(${zoom}) translate(-350 -280)`);
   });
 }
+function pendingWorkDates(year) {
+  return works.filter(w=>w.status==='pending' && String(w.season)===String(year)).reduce((counts,w)=>{counts[w.date]=(counts[w.date] || 0)+1;return counts;},{});
+}
+function workCalendarDays(year,month) {
+  const offset=(new Date(year,month,1).getDay()+6)%7;
+  return [...Array(offset).fill(null),...Array.from({length:new Date(year,month+1,0).getDate()},(_,i)=>year+'-'+String(month+1).padStart(2,'0')+'-'+String(i+1).padStart(2,'0'))];
+}
+function workCalendarMarkup(year,month) {
+  const counts = works.filter(w => String(w.season) === String(season)).reduce((days,w) => {
+    days[w.date] ||= {pending:0,confirmed:0,rejected:0};
+    if (w.status in days[w.date]) days[w.date][w.status]++;
+    return days;
+  }, {});
+  const label = new Date(year,month,1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+  return '<div class="work-calendar-heading"><button type="button" class="ds-icon-button" data-calendar-month="-1" aria-label="Предыдущий месяц">‹</button><strong>'+esc(label)+'</strong><button type="button" class="ds-icon-button" data-calendar-month="1" aria-label="Следующий месяц">›</button></div><div class="work-calendar-grid">'+['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(day=>'<span class="work-calendar-weekday">'+day+'</span>').join('')+workCalendarDays(year,month).map(day=>{
+    if (!day) return '<span></span>';
+    const c = counts[day], description = c ? ': ждёт расчёта '+c.pending+', подтверждено '+c.confirmed+', отклонено '+c.rejected : ': нет работ';
+    return '<button type="button" class="work-calendar-day '+(day===date?'selected ':'')+(c?.pending?'has-pending':'')+'" data-calendar-date="'+day+'" aria-label="'+day.split('-').reverse().join('.')+description+'" '+(day===date?'aria-current="date"':'')+'><span>'+Number(day.slice(-2))+'</span>'+(c?'<small class="work-calendar-counts" aria-hidden="true">'+['pending','confirmed','rejected'].filter(key=>c[key]>0).map(key=>'<span class="'+key+'">'+c[key]+'</span>').join('')+'</small>':'')+'</button>';
+  }).join('')+'</div><div class="work-calendar-key"><span class="work-calendar-counts"><span class="pending">Ждёт</span><span class="confirmed">Подтверждено</span><span class="rejected">Отклонено</span></span></div>';
+}
+function bindWorkCalendar() {
+  const calendar=$('#work-calendar'),trigger=$('#work-date');
+  let [year,month]=date.split('-').map(Number);month--;
+  const redraw=()=>{calendar.innerHTML=workCalendarMarkup(year,month);};
+  calendar.addEventListener('beforetoggle',event=>{if(event.newState==='open'){const rect=trigger.getBoundingClientRect();calendar.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-Math.min(440,window.innerWidth-16)-8))+'px';calendar.style.top=Math.max(8,Math.min(rect.bottom+8,window.innerHeight-500))+'px';redraw();}});
+  calendar.addEventListener('toggle',event=>trigger.setAttribute('aria-expanded',String(event.newState==='open')));
+  calendar.onclick=event=>{
+    const day=event.target.closest('[data-calendar-date]');
+    if(day){date=day.dataset.calendarDate;calendar.hidePopover();renderOperations();$('#work-date').focus();return;}
+    const nav=event.target.closest('[data-calendar-month]');
+    if(nav){const target=new Date(year,month+Number(nav.dataset.calendarMonth),1);year=target.getFullYear();month=target.getMonth();redraw();calendar.querySelector('[data-calendar-month="'+nav.dataset.calendarMonth+'"]').focus();}
+  };
+}
+function workFilterMarkup(id, label, entries, selectedValue) {
+  const active = selectedValue.length > 0, labels = selectedValue.map(value => entries.find(([key]) => String(key) === value)?.[1] || value), valueLabel = labels[0] + (labels.length > 1 ? ' +' + (labels.length-1) : '');
+  return `<span class="agro-filter" data-ds-filter-menu data-active="${active}"><button type="button" id="${id}" class="agro-filter-trigger" popovertarget="${id}-menu" aria-label="${esc(label + (active ? ': ' + labels.join(', ') : ''))}" aria-haspopup="dialog" aria-expanded="false"><span>${esc(label)}${active ? ': '+esc(valueLabel) : ''}</span><span class="ds-symbol" aria-hidden="true">expand_more</span></button>${active ? `<button class="agro-filter-clear" type="button" data-filter-clear="${id}" aria-label="Очистить: ${esc(label)}"><span class="ds-symbol" aria-hidden="true">close</span></button>` : ''}<div id="${id}-menu" class="agro-filter-popup" popover role="dialog" aria-label="${esc(label)}"><div class="agro-filter-heading">${esc(label)}</div><input type="search" class="agro-filter-search" aria-label="Поиск: ${esc(label)}" placeholder="Поиск"><div class="agro-filter-options">${entries.map(([value,title]) => `<label data-ds-filter-option data-selected="${selectedValue.includes(String(value))}" data-disabled="false"><input type="checkbox" name="${id}-value" value="${esc(value)}" ${selectedValue.includes(String(value)) ? 'checked' : ''}><span>${esc(title)}</span></label>`).join('')}<p class="hint" data-filter-empty hidden>Ничего не найдено</p></div><div class="agro-filter-actions"><button type="button" class="btn subtle" data-filter-clear="${id}">Очистить</button><button type="button" class="btn primary" data-filter-apply="${id}">Применить</button></div></div></span>`;
+}
+function bindWorkFilters() {
+  const bindings = {
+    'work-field': [workField, value => workField = value], 'work-crop': [workCrop, value => workCrop = value],
+    'work-machine': [workMachine, value => workMachine = value], 'work-driver': [workDriver, value => workDriver = value],
+    'work-status': [status, value => status = value]
+  };
+  for (const [id, [value, save]] of Object.entries(bindings)) {
+    const trigger = $('#'+id), menu = $('#'+id+'-menu'), search = menu.querySelector('input[type=search]'), radios = [...menu.querySelectorAll('input[type=checkbox]')];
+    const close = () => { menu.hidePopover(); trigger.focus(); };
+    const commit = value => { save(value); close(); renderOperations(); $('#'+id).focus(); };
+    menu.addEventListener('beforetoggle', event => {
+      if (event.newState !== 'open') return;
+      search.value = ''; radios.forEach(radio => { radio.checked = value.includes(radio.value); radio.closest('label').hidden = false; radio.closest('label').dataset.selected = String(radio.checked); });
+      menu.querySelector('[data-filter-empty]').hidden = true;
+      const rect = trigger.getBoundingClientRect(), height = Math.min(400, window.innerHeight-16);
+      menu.style.left = Math.max(8,Math.min(rect.left,window.innerWidth-316))+'px';
+      menu.style.top = (rect.bottom+height+8 <= window.innerHeight ? rect.bottom+8 : Math.max(8,rect.top-height-8))+'px';
+      menu.style.maxHeight = height+'px';
+    });
+    menu.addEventListener('toggle', event => { trigger.setAttribute('aria-expanded', String(event.newState === 'open')); if (event.newState === 'open') search.focus(); });
+    search.oninput = () => { radios.forEach(radio => radio.closest('label').hidden = !radio.closest('label').textContent.toLocaleLowerCase('ru').includes(search.value.toLocaleLowerCase('ru'))); menu.querySelector('[data-filter-empty]').hidden = radios.some(radio => !radio.closest('label').hidden); };
+    menu.onchange = () => radios.forEach(radio => radio.closest('label').dataset.selected = String(radio.checked));
+    menu.onkeydown = event => { if (event.key === 'Escape') { event.preventDefault(); close(); } };
+    menu.querySelector('[data-filter-apply]').onclick = () => commit(radios.filter(radio => radio.checked).map(radio => radio.value));
+    trigger.parentElement.querySelectorAll('[data-filter-clear]').forEach(button => button.onclick = () => commit([]));
+  }
+}
+const workExtraColumns = [
+  ['operation','Операция'], ['net','Обработано, га'], ['finalArea','Учтено, га'], ['implement','Орудие'],
+  ['overlap','Перекрытия, га'], ['gaps','Пропуски, га'], ['material','Материал'], ['rate','Норма на га'], ['consumption','Расход']
+];
+const workColumns = [['field','Поле'],['crop','Культура'],['machine','Техника'],['driver','Механизатор'],['time','Время работы'],['fieldArea','Площадь поля'],...workExtraColumns,['status','Статус']];
+const defaultWorkColumns = ['field','crop','machine','driver','time','fieldArea','operation','net','finalArea','status'];
+let workColumnOrder = workColumns.map(([key]) => key), workVisibleColumns = [...defaultWorkColumns];
+try {
+  const saved = JSON.parse(localStorage.getItem('aurora-agro-work-columns'));
+  if (saved && Array.isArray(saved.order) && Array.isArray(saved.visible)) {
+    const keys = workColumns.map(([key]) => key);
+    workColumnOrder = [...new Set([...saved.order.filter(key => keys.includes(key)),...keys])];
+    workVisibleColumns = [...new Set(saved.visible.filter(key => keys.includes(key)))];
+    if (!workVisibleColumns.length) workVisibleColumns = [...defaultWorkColumns];
+  }
+} catch {}
+function saveWorkColumns() {
+  try { localStorage.setItem('aurora-agro-work-columns',JSON.stringify({order:workColumnOrder,visible:workVisibleColumns})); } catch {}
+}
+function workTableCell(work,key) {
+  if (key === 'field') return '<span class="field-no">'+String(work.field).padStart(2,'0')+'</span><strong>'+esc(getField(work.field).name)+'</strong>';
+  if (key === 'crop') return esc(currentCrop(getField(work.field),work.season) || 'Культура не назначена');
+  if (key === 'machine' || key === 'driver') return esc(work[key]);
+  if (key === 'time') return esc(work.time)+'<small>'+esc(work.duration)+'</small>';
+  if (key === 'fieldArea') return fmt(getField(work.field).area)+' га';
+  if (key === 'status') return statusBadge(work);
+  return workExtraCell(work,key);
+}
+function workExtraCell(work,key) {
+  if (key === 'operation' || key === 'implement') return esc(work[key] || '—');
+  if (work.status !== 'confirmed') return '—';
+  if (key === 'material') return esc(work.material || 'Без материалов');
+  if (key === 'rate' || key === 'consumption') return work.material && Number.isFinite(work.rate) ? fmt(key === 'rate' ? work.rate : work.finalArea * work.rate)+' '+esc(work.unit || 'кг')+(key === 'rate' ? '/га' : '') : '—';
+  const value = key === 'gaps' ? (work.gaps ?? getField(work.field).area-work.net) : work[key];
+  return Number.isFinite(value) ? fmt(value) : '—';
+}
 function renderOperations() {
-  const dayWorks = works.filter(w => w.date === date && String(w.season) === season), pending = dayWorks.filter(w => w.status === 'pending'), confirmed = dayWorks.filter(w => w.status === 'confirmed');
+  const seasonWorks = works.filter(w => String(w.season) === season);
+  const filterFields = [...new Set(seasonWorks.map(w => w.field))].map(id => [String(id), '№ ' + String(id).padStart(2,'0') + ' · ' + getField(id).name]);
+  const filterCrops = [...new Set(seasonWorks.map(w => currentCrop(getField(w.field), w.season) || 'Культура не назначена'))].map(name => [name,name]);
+  const filterMachines = [...new Set(seasonWorks.map(w => w.machine))].map(name => [name,name]);
+  const filterDrivers = [...new Set(seasonWorks.map(w => w.driver))].map(name => [name,name]);
   const list = filteredWorks();
-  if (!list.some(w => w.id === selected)) { selected = list[0]?.id ?? null; initDraft(); }
-  if (!draft && currentWork()) initDraft();
-  const total = confirmed.reduce((sum, w) => sum + w.finalArea, 0);
-  main.innerHTML = `${heading('Полевые операции', 'От GPS-трека до подтверждённых гектаров — в одном окне.', button('Обновить треки', 'sync', false, 'sync'))}
-    <div class="stats"><div class="stat"><div class="stat-head">Обнаружено работ${icon('operations')}</div><div class="stat-value">${dayWorks.length}<span>за день</span></div><div class="stat-foot">${new Set(dayWorks.map(w => w.machine)).size} единицы техники</div></div><div class="stat"><div class="stat-head">Ожидают проверки${icon('clock')}</div><div class="stat-value">${pending.length}<span>работы</span></div><div class="stat-foot">Готовы к расчёту площади</div></div><div class="stat"><div class="stat-head">Подтверждено${icon('check')}</div><div class="stat-value">${confirmed.length}<span>работы</span></div><div class="stat-foot accent">Включены в отчёты</div></div><div class="stat"><div class="stat-head">Учтённая площадь${icon('fields')}</div><div class="stat-value">${fmt(total)}<span>га</span></div><div class="stat-foot">По подтверждённым работам</div></div></div>
-    <div class="tabs" aria-label="Статусы работ">${[['pending','К проверке'],['confirmed','Подтверждённые'],['all','Все операции']].map(([key, title]) => `<button data-status="${key}" class="${status === key ? 'active' : ''}" aria-pressed="${status === key}">${title}<b>${key === 'all' ? dayWorks.length : dayWorks.filter(w => w.status === key).length}</b></button>`).join('')}</div>
-    <div class="toolbar"><div class="row"><input id="work-date" type="date" aria-label="Дата работ" value="${date}">${searchBox('work-search','Поле, техника или механизатор',workQuery)}</div><span class="hint">${icon('sync').replace('class="icon"','class="icon" style="display:inline;width:12px;height:12px;vertical-align:middle;margin-right:5px"')}Демо-треки за 30 сентября и 1 октября</span></div>
-    ${currentWork() ? `<div class="workspace">${mapMarkup(getField(currentWork().field), !!result || currentWork().status === 'confirmed')}<section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></div>` : '<div class="empty table-panel">За выбранную дату и сезон подходящих работ нет.<br>Демо-данные доступны за 30 сентября и 1 октября 2026 года.</div>'}
-    <section class="table-panel"><div class="panel-title"><h2>Работы за день <span class="hint">&nbsp; ${list.length}</span></h2><span class="hint">Выберите работу для просмотра</span></div><div class="table-scroll"><table><thead><tr><th>Поле / культура</th><th>Техника</th><th>Время работы</th><th>Площадь поля</th><th>Статус</th><th></th></tr></thead><tbody>${list.map(w => `<tr class="clickable ${w.id === selected ? 'selected' : ''}" data-work="${w.id}"><td><span class="field-no">${String(w.field).padStart(2,'0')}</span><strong>${esc(getField(w.field).name)}</strong><small>${esc(currentCrop(getField(w.field), w.season) || 'Культура не назначена')}</small></td><td>${esc(w.machine)}<small>${esc(w.driver)}</small></td><td>${w.time}<small>${w.duration}</small></td><td>${fmt(getField(w.field).area)} га</td><td>${statusBadge(w)}</td><td><button class="table-button" aria-label="Открыть работу ${esc(getField(w.field).name)}">${icon('arrow')}</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Работы не найдены</td></tr>'}</tbody></table></div></section>`;
+  const orderedColumns = workColumnOrder.map(key => workColumns.find(([id]) => id === key));
+  const visibleColumns = orderedColumns.filter(([key]) => workVisibleColumns.includes(key));
+  main.innerHTML = `${heading('Полевые операции', 'Выберите работу для просмотра трека и расчёта площади.', button('Обновить треки', 'sync', false, 'sync'))}
+    <div class="toolbar"><div class="row"><button type="button" id="work-date" class="btn work-date-trigger" popovertarget="work-calendar" aria-label="Дата работ" aria-expanded="false">${date.split('-').reverse().join('.')}${icon('operations')}</button><div id="work-calendar" class="work-calendar" popover aria-label="Календарь работ"></div>${workFilterMarkup('work-field','Поле',filterFields,workField)}${workFilterMarkup('work-crop','Культура',filterCrops,workCrop)}${workFilterMarkup('work-machine','Техника',filterMachines,workMachine)}${workFilterMarkup('work-driver','Механизатор',filterDrivers,workDriver)}${workFilterMarkup('work-status','Статус',[['pending','Ждёт расчёта'],['confirmed','Подтверждена'],['rejected','Отклонена']],status)}</div><details class="work-columns"><summary class="btn">Колонки</summary><div class="work-columns-menu">${orderedColumns.map(([key,title],index) => `<div class="work-column-row"><label><input type="checkbox" data-work-column="${key}" aria-label="${esc(title)}" ${workVisibleColumns.includes(key) ? 'checked' : ''} ${workVisibleColumns.length === 1 && workVisibleColumns.includes(key) ? 'disabled' : ''}>${title}</label><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="-1" aria-label="Выше: ${esc(title)}" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="1" aria-label="Ниже: ${esc(title)}" ${index === orderedColumns.length-1 ? 'disabled' : ''}>↓</button></div>`).join('')}<button type="button" class="btn subtle" id="reset-work-columns">По умолчанию</button></div></details></div>
+    <section class="table-panel"><div class="table-scroll"><table><thead><tr>${visibleColumns.map(([,title]) => `<th>${title}</th>`).join('')}<th></th></tr></thead><tbody>${list.map(w => `<tr class="clickable" data-work="${w.id}">${visibleColumns.map(([key]) => `<td>${workTableCell(w,key)}</td>`).join('')}<td><button class="table-button" aria-label="Открыть работу ${esc(getField(w.field).name)}">${icon('arrow')}</button></td></tr>`).join('') || `<tr><td colspan="${visibleColumns.length+1}" class="empty">Работы не найдены</td></tr>`}</tbody></table></div></section>`;
   $('#sync').onclick = () => toast('Демо-треки актуальны. Подключение к Авроре GPS появится в рабочей версии.');
-  $$('[data-status]').forEach(b => b.onclick = () => { status = b.dataset.status; renderOperations(); });
-  $('#work-date').onchange = e => { date = e.target.value; renderOperations(); };
-  $('#work-search').oninput = e => { workQuery = e.target.value; const pos = e.target.selectionStart; renderOperations(); $('#work-search').focus(); $('#work-search').setSelectionRange(pos,pos); };
-  $$('[data-work]').forEach(row => row.onclick = () => { selected = Number(row.dataset.work); initDraft(); renderOperations(); });
-  if (currentWork()) { bindMap(); bindEditor(); }
+  bindWorkCalendar();
+  bindWorkFilters();
+  const refreshColumns = selector => { saveWorkColumns(); renderOperations(); $('.work-columns').open = true; $(selector)?.focus(); };
+  document.querySelectorAll('[data-work-column]').forEach(input => input.onchange = () => {
+    workVisibleColumns = [...document.querySelectorAll('[data-work-column]:checked')].map(item => item.dataset.workColumn);
+    refreshColumns('[data-work-column="'+input.dataset.workColumn+'"]');
+  });
+  document.querySelectorAll('[data-column-move]').forEach(button => button.onclick = () => {
+    const index = workColumnOrder.indexOf(button.dataset.columnMove), target = index + Number(button.dataset.direction);
+    if (target < 0 || target >= workColumnOrder.length) return;
+    [workColumnOrder[index],workColumnOrder[target]] = [workColumnOrder[target],workColumnOrder[index]];
+    refreshColumns('[data-column-move="'+button.dataset.columnMove+'"][data-direction="'+button.dataset.direction+'"]');
+  });
+  $('#reset-work-columns').onclick = () => { workColumnOrder = workColumns.map(([key]) => key); workVisibleColumns = [...defaultWorkColumns]; refreshColumns('#reset-work-columns'); };
+  $$('[data-work]').forEach(row => row.onclick = () => { location.hash = `operations/${row.dataset.work}`; });
+
+}
+function renderOperation(work) {
+  if (selected !== work.id || !draft) { selected = work.id; initDraft(); }
+  main.innerHTML = `<div class="operation-layout"><aside class="operation-sidebar" aria-label="Расчёт операции"><div class="operation-back"><a class="btn subtle" href="#operations">← К списку работ</a></div><section class="editor" aria-label="Подтверждение работы">${editorMarkup()}</section></aside>${mapMarkup(getField(work.field), !!result || work.status === 'confirmed')}</div>`;
+  bindMap();
+  bindEditor();
 }
 function editorMarkup() {
   const w = currentWork(), f = getField(w.field);
-  const header = `<div class="editor-title"><span class="eyebrow">Работа № ${String(w.id).padStart(3,'0')}</span>${statusBadge(w)}</div><h2>${esc(w.machine)} <span class="hint">${w.plate}</span></h2><div class="machine-line">${icon('clock')}<span>${w.time}</span><span>${w.duration}</span></div>`;
+  const header = `<div class="editor-title"><span class="eyebrow">Работа № ${String(w.id).padStart(3,'0')}</span>${statusBadge(w)}</div><h2>${esc(w.machine)} <span class="hint">${w.plate}</span></h2><div class="machine-line">${icon('clock')}<span>${esc(w.date.split('-').reverse().join('.'))} · ${w.time}</span><span>${w.duration}</span></div>`;
   if (w.status !== 'pending') return `${header}<div class="saved-message">${icon(w.status === 'confirmed' ? 'check' : 'help')}<h2>${w.status === 'confirmed' ? 'Работа подтверждена' : 'Работа отклонена'}</h2><p>${w.status === 'confirmed' ? `${esc(w.operation)} · ${fmt(w.finalArea)} га<br>${esc(w.material || 'Материалы не использовались')}${w.material ? ` · ${fmt(w.finalArea*w.rate)} ${esc(w.unit)}` : ''}<br>Сезон ${esc(w.season)} · ${esc(currentCrop(f,w.season) || 'Культура не назначена')}` : 'Эта работа не включена в отчёты.'}</p></div><div class="actions">${button('Вернуть к проверке','reopen')}${w.status === 'confirmed' ? button('Открыть отчёт','open-report',true) : ''}</div><p class="calculate-note">Данные сохранены в этом браузере.</p>`;
-  return `${header}<div class="step-line"><span class="${step === 'settings' ? 'current' : ''}">1. Параметры</span><i></i><span class="${step === 'area' ? 'current' : ''}">2. Площадь</span><i></i><span class="${step === 'materials' ? 'current' : ''}">3. Материалы</span></div>
-    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options([...new Set([...implementsCatalog.map(item=>item.name),draft.implement])],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label><div class="full width-note">${icon('leaf')}<span id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')} · из севооборота</span></div></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия. В макете используются демонстрационные показатели.</p><div class="actions">${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
+  return `${header}<div class="work-crop">${icon('leaf')}<span class="work-crop-label">Культура</span><strong id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')}</strong></div><div class="step-line"><span class="${step === 'settings' ? 'current' : ''}">1. Параметры</span><i></i><span class="${step === 'area' ? 'current' : ''}">2. Площадь</span><i></i><span class="${step === 'materials' ? 'current' : ''}">3. Материалы</span></div>
+    ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options([...new Set([...implementsCatalog.map(item=>item.name),draft.implement])],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия.</p><div class="actions">${button('Отклонить работу','reject',false)}${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
     ${step === 'area' ? `<div class="calculation"><span class="eyebrow">Чистая обработанная площадь · демо</span><div class="big-number">${fmt(result.net)} <small>га</small></div><div class="calculation-details"><div>Площадь поля<strong>${fmt(f.area)} га</strong></div><div>Перекрытия<strong>${fmt(result.overlap)} га</strong></div><div>Пропуски<strong>${fmt(result.gaps)} га</strong></div></div></div><h3>Какую площадь учесть?</h3><div class="area-choices">${[['calculated',`Расчётную · ${fmt(result.net)} га`],['field',`До площади поля · ${fmt(f.area)} га`],['manual','Ввести вручную']].map(([value,title]) => `<label class="choice"><input type="radio" name="area-mode" value="${value}" ${areaMode === value ? 'checked' : ''}>${title}</label>`).join('')}</div><label id="manual-area-label" ${areaMode !== 'manual' ? 'hidden' : ''}>Площадь, га<input id="manual-area" type="number" min="0.01" max="100000" step="0.01" value="${esc(manualArea)}"></label><p class="calculate-note">Перекрытия показаны отдельно. При повторном проходе или смещении трекера проверьте результат перед учётом.</p><div class="actions">${button('Назад','back-settings')}${button('Подтвердить площадь','accept-area',true)}</div>` : ''}
     ${step === 'materials' ? `<div class="calculation"><span class="eyebrow">Площадь к учёту</span><div class="big-number">${fmt(draft.finalArea)} <small>га</small></div><span class="hint">${esc(draft.operation)} · сезон ${esc(draft.season)}</span></div><div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['',...new Set([...materialsCatalog.map(item=>item.name),...(draft.material?[draft.material]:[])])],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions">${button('Назад','back-area')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
-    <div class="actions">${button('Отклонить работу','reject',false)}</div>`;
+    ${step !== 'settings' ? `<div class="actions">${button('Отклонить работу','reject',false)}</div>` : ''}`;
 }
 function redrawEditor() { $('.editor').innerHTML = editorMarkup(); bindEditor(); $('#field-map').classList.toggle('calculated',!!result); }
 function bindOperationPicker() {
@@ -386,12 +524,12 @@ function bindOperationPicker() {
   validate();
 }
 function bindEditor() {
-  if ($('#reopen')) $('#reopen').onclick = () => { currentWork().status = 'pending'; persist(); status = 'pending'; initDraft(); render(); toast('Работа возвращена к проверке'); };
-  if ($('#open-report')) $('#open-report').onclick = () => { reportDateFrom = date; reportDateTo = date; location.hash = 'reports'; };
+  if ($('#reopen')) $('#reopen').onclick = () => { currentWork().status = 'pending'; persist(); status = ['pending']; initDraft(); render(); toast('Работа возвращена к проверке'); };
+  if ($('#open-report')) $('#open-report').onclick = () => { reportDateFrom = currentWork().date; reportDateTo = currentWork().date; location.hash = 'reports'; };
   bindOperationPicker();
   if ($('#implement')) $('#implement').onchange = e => { draft.implement = e.target.value; draft.width = implementsCatalog.find(item=>item.name===draft.implement)?.width ?? draft.width; $('#width-text').textContent = `${fmt(draft.width,1)} м`; };
   if ($('#driver')) $('#driver').oninput = e => draft.driver = e.target.value;
-  if ($('#work-season')) $('#work-season').onchange = e => { draft.season = e.target.value; $('#draft-crop').textContent = `${currentCrop(getField(draft.field),draft.season) || 'Культура не назначена'} · из севооборота`; };
+  if ($('#work-season')) $('#work-season').onchange = e => { draft.season = e.target.value; $('#draft-crop').textContent = `${currentCrop(getField(draft.field),draft.season) || 'Культура не назначена'}`; };
   if ($('#calculate')) $('#calculate').onclick = () => {
     if (!systemOperations.includes(draft.operation)) { $('#operation').reportValidity(); return; }
     if (!draft.driver.trim()) { $('#driver').reportValidity(); return; }
@@ -420,9 +558,9 @@ function bindEditor() {
     updateMaterial();
     if (draft.material && (!Number.isFinite(draft.rate) || draft.rate <= 0 || draft.rate > 100000)) { toast('Укажите положительную норму внесения до 100 000.'); $('#rate').focus(); return; }
     const name = getField(draft.field).name;
-    Object.assign(currentWork(), draft, result, { status: 'confirmed' }); persist(); updateNav(); renderOperations(); toast(`«${name}»: работа подтверждена и включена в отчёт`);
+    Object.assign(currentWork(), draft, result, { status: 'confirmed' }); persist(); render(); toast(`«${name}»: работа подтверждена и включена в отчёт`);
   };
-  if ($('#reject')) $('#reject').onclick = () => { currentWork().status = 'rejected'; persist(); updateNav(); renderOperations(); toast('Работа отклонена. Вернуть её можно во вкладке «Все операции».'); };
+  if ($('#reject')) $('#reject').onclick = () => { currentWork().status = 'rejected'; persist(); render(); toast('Работа отклонена. Вернуть её можно через фильтр «Отклонена».'); };
 }
 function renderFields() {
   if (drawing) { renderFieldDrawing(); return; }
@@ -640,7 +778,7 @@ function renderReports() {
   $$('[data-report]').forEach(b=>b.onclick=()=>{reportKind=b.dataset.report;renderReports();});
   const changeDate = (which,value) => { if(!value)return; if(which==='from')reportDateFrom=value;else reportDateTo=value;if(reportDateFrom>reportDateTo){if(which==='from')reportDateTo=reportDateFrom;else reportDateFrom=reportDateTo;}renderReports(); };
   $('#report-from').onchange=e=>changeDate('from',e.target.value);$('#report-to').onchange=e=>changeDate('to',e.target.value);
-  $('#report-day').onclick=()=>{reportDateFrom=reportDateTo='2026-10-01';renderReports();};$('#report-week').onclick=()=>{reportDateFrom='2026-09-28';reportDateTo='2026-10-04';renderReports();};
+  $('#report-day').onclick=()=>{reportDateFrom=reportDateTo=demoDates.today;renderReports();};$('#report-week').onclick=()=>{const weekday=(new Date(demoDates.today+'T12:00:00Z').getUTCDay()+6)%7;reportDateFrom=shiftDemoDate(demoDates.today,-weekday);reportDateTo=shiftDemoDate(reportDateFrom,6);renderReports();};
   if($('#report-group'))$('#report-group').onchange=e=>{reportGroup=e.target.value;renderReports();};
   if($('#show-material'))$('#show-material').onchange=e=>{reportMaterial=e.target.checked;renderReports();};
   if($('#show-overlap'))$('#show-overlap').onchange=e=>{reportOverlap=e.target.checked;renderReports();};
@@ -666,7 +804,12 @@ function machineFromEditRoute() {
   return projectMachines.find(machine => page === `directory/machines/${encodeURIComponent(machine.id)}/edit`);
 }
 function renderDirectory() {
-  main.innerHTML=`${heading('Справочники','Общие данные хозяйства для всех разделов.')}<div class="directory-grid">${directoryCards.map(card=>`<a class="directory-card directory-link" href="#directory/${card.id}">${icon(card.icon)}<span class="directory-card-count">${recordCount(card.items.length)}</span><h2>${card.title}</h2><p>${card.description}</p><span class="directory-open">Открыть справочник ${icon('arrow')}</span></a>`).join('')}</div>`;
+  main.innerHTML=`${heading('Справочники','Общие данные хозяйства для всех разделов.')}<div class="directory-grid">${directoryCards.map(card=>`<a class="directory-card directory-link" href="#directory/${card.id}">${icon(card.icon)}<span class="directory-card-count">${recordCount(card.items.length)}</span><h2>${card.title}</h2><p>${card.description}</p><span class="directory-open">Открыть справочник ${icon('arrow')}</span></a>`).join('')}</div><section class="external-directories" aria-labelledby="external-directories-title"><h2 id="external-directories-title">Дополнительные справочники</h2><div class="directory-grid">${[
+    ['Отраслевые и технологические регламенты','https://mshp.gov.by/ru/oreglament-ru/'],
+    ['Каталог СЗР','https://pesticidy.by/'],
+    ['Описание сортов','https://sorttest.by/descriptionVarieties.php'],
+  ].map(([title,url])=>`<article class="directory-card directory-link">${icon('directory')}<h2>${esc(title)}</h2><p>${esc(new URL(url).hostname)}</p><a class="directory-open" href="${url}" target="_blank" rel="noopener noreferrer">Открыть справочник ${icon('arrow')}</a></article>`).join('')}</div></section>`;
+
 }
 function renderDirectoryPage() {
   const card = directoryCards.find(item => page === `directory/${item.id}`);
@@ -885,10 +1028,10 @@ function openMachinePicker() {
     };
   });
 }
-$('#help').onclick=()=>modal('О макете Аврора Агро','<p>Кликабельный MVP по описанию «Аналог Гектеры». Основной путь: выберите работу → запустите расчёт → подтвердите площадь → добавьте материал → подтвердите работу.</p><p>Данные, схема полей и расчёты демонстрационные. Подключения к GPS, географического расчёта и серверного хранения нет. Изменения сохраняются только в этом браузере.</p><p>Демо-работы доступны за 30 сентября и 1 октября 2026 года. Технику можно переносить из демонстрационного корневого проекта и менять её тип, севооборот — редактировать.</p><div class="actions">'+button('Сбросить демо-данные','reset-demo')+'</div>',()=>$('#reset-demo').onclick=()=>{works=structuredClone(initialWorks);try{localStorage.removeItem('aurora-agro-demo-v1');}catch{}$('#dialog').close();location.reload();});
+$('#help').onclick=()=>modal('О макете Аврора Агро','<p>Кликабельный MVP по описанию «Аналог Гектеры». Основной путь: выберите работу → запустите расчёт → подтвердите площадь → добавьте материал → подтвердите работу.</p><p>Данные, схема полей и расчёты демонстрационные. Подключения к GPS, географического расчёта и серверного хранения нет. Изменения сохраняются только в этом браузере.</p><p>Демо-работы доступны за сегодня и вчера. Технику можно переносить из демонстрационного корневого проекта и менять её тип, севооборот — редактировать.</p><div class="actions">'+button('Сбросить демо-данные','reset-demo')+'</div>',()=>$('#reset-demo').onclick=()=>{works=structuredClone(initialWorks);try{localStorage.removeItem('aurora-agro-demo-v1');}catch{}$('#dialog').close();location.reload();});
 function pageFromHash() {
   const target = location.hash.slice(1);
-  return ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || fields.some(field=>target===`fields/${field.id}/edit`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
+  return /^operations\/\d+$/.test(target) && works.some(work => target === `operations/${work.id}`) || ['operations','fields','rotation','reports','directory'].includes(target) || directoryCards.some(card => target === `directory/${card.id}`) || fields.some(field=>target===`fields/${field.id}/edit`) || projectMachines.some(machine => target === `directory/machines/${encodeURIComponent(machine.id)}/edit`) ? target : 'operations';
 }
 window.addEventListener('hashchange',()=>{page=pageFromHash();drawing=false;drawPoints=[];render();window.scrollTo({top:0,behavior:'instant'});});
 page=pageFromHash();
