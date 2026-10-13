@@ -359,3 +359,10 @@ dialog{background:var(--ds-surface-raised);color:var(--ds-fg);border-radius:var(
 .calendar-page .work-calendar-counts{font-size:16px;line-height:26px;gap:6px}
 .calendar-page .work-calendar-counts>span{padding:0 7px}
 @media(max-width:640px){.calendar-page.work-calendar{padding:12px}.calendar-page .work-calendar-grid{gap:3px}.calendar-page .work-calendar-day{height:80px}.calendar-page .work-calendar-counts{font-size:13px;gap:2px}.calendar-page .work-calendar-counts>span{padding:0 3px}}
+
+.work-views{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.work-views .tabs{margin:0;flex:1;min-width:0;overflow-x:auto}
+.work-views .tabs button{white-space:nowrap}
+.work-view-menu{position:relative}
+.work-view-menu>div{position:absolute;right:0;top:calc(100% + 8px);z-index:20;display:grid;min-width:180px;padding:8px;background:var(--ds-surface,#fff);border:1px solid var(--ds-border);border-radius:8px;box-shadow:0 8px 24px #0002}
+.work-view-menu>div button{text-align:left;justify-content:flex-start}

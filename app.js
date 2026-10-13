@@ -402,7 +402,66 @@ try {
   }
 } catch {}
 function saveWorkColumns() {
+  if (activeWorkView) return;
+  allWorkView.order = [...workColumnOrder]; allWorkView.visible = [...workVisibleColumns];
   try { localStorage.setItem('aurora-agro-work-columns',JSON.stringify({order:workColumnOrder,visible:workVisibleColumns})); } catch {}
+}
+let workViews = [], activeWorkView = '';
+status = [];
+const allWorkView = captureWorkView();
+try {
+  const saved = JSON.parse(localStorage.getItem('aurora-agro-work-views') || '[]');
+  const keys = workColumns.map(([key]) => key);
+  if (Array.isArray(saved)) workViews = saved.filter(view => view && typeof view.id === 'string' && typeof view.name === 'string' && view.config && ['field','crop','machine','driver','status'].every(key => Array.isArray(view.config.filters?.[key]) && view.config.filters[key].every(value => typeof value === 'string')) && Array.isArray(view.config.order) && Array.isArray(view.config.visible)).map(view => ({...view,config:{...view.config,order:[...new Set([...view.config.order.filter(key => keys.includes(key)),...keys])],visible:[...new Set(view.config.visible.filter(key => keys.includes(key)))]}})).filter(view => view.config.visible.length);
+} catch {}
+function captureWorkView() {
+  return {filters:{field:[...workField],crop:[...workCrop],machine:[...workMachine],driver:[...workDriver],status:[...status]},order:[...workColumnOrder],visible:[...workVisibleColumns]};
+}
+function applyWorkView(config) {
+  workField=[...config.filters.field]; workCrop=[...config.filters.crop]; workMachine=[...config.filters.machine]; workDriver=[...config.filters.driver]; status=[...config.filters.status];
+  workColumnOrder=[...config.order]; workVisibleColumns=[...config.visible];
+}
+function workViewsMarkup() {
+  const active = workViews.find(view => view.id === activeWorkView);
+  const dirty = active && JSON.stringify(active.config) !== JSON.stringify(captureWorkView());
+  return `<div class="work-views"><div class="tabs" role="group" aria-label="Слои работ"><button type="button" data-work-view="" class="${!active?'active':''}" aria-pressed="${!active}">Все</button>${workViews.map(view => `<button type="button" data-work-view="${esc(view.id)}" class="${view.id===activeWorkView?'active':''}" aria-pressed="${view.id===activeWorkView}">${esc(view.name)}${view.id===activeWorkView && dirty?' •':''}</button>`).join('')}<button type="button" id="add-work-view" aria-label="Создать слой">+</button></div><div class="row">${dirty?button('Сохранить изменения','update-work-view',true):''}${button('Сохранить как слой','save-work-view')}${active?'<details class="work-view-menu"><summary class="btn" aria-label="Действия со слоем">⋯</summary><div><button class="btn subtle" id="rename-work-view">Переименовать</button><button class="btn subtle" id="copy-work-view">Создать копию</button><button class="btn subtle" id="delete-work-view">Удалить слой</button></div></details>':''}</div></div>`;
+}
+function persistWorkViews() {
+  try { localStorage.setItem('aurora-agro-work-views',JSON.stringify(workViews)); }
+  catch { toast('Слой доступен в текущей вкладке. Браузер не смог сохранить его после закрытия.'); }
+}
+function editWorkViewName(rename = false) {
+  const active = workViews.find(view => view.id === activeWorkView);
+  modal(rename?'Переименовать слой':'Сохранить как слой',`<form id="work-view-form"><label>Название слоя<input id="work-view-name" required maxlength="60" value="${esc(rename?active.name:'')}" placeholder="Например, Ожидают расчёта"></label><p id="work-view-error" class="fleet-error" role="alert"></p><div class="actions"><button type="button" class="btn" id="cancel-work-view">Отмена</button><button type="submit" class="btn primary">Сохранить</button></div></form>`,()=>{
+    $('#cancel-work-view').onclick=()=>$('#dialog').close();
+    $('#work-view-name').focus();
+    $('#work-view-form').onsubmit=event=>{
+      event.preventDefault(); const name=$('#work-view-name').value.trim();
+      if (!name || name.toLocaleLowerCase('ru')==='все' || workViews.some(view => (!rename || view.id!==activeWorkView) && view.name.toLocaleLowerCase('ru')===name.toLocaleLowerCase('ru'))) { $('#work-view-error').textContent='Укажите уникальное название слоя.'; return; }
+      if(rename) active.name=name;
+      else { const view={id:crypto.randomUUID(),name,config:captureWorkView()}; workViews.push(view); activeWorkView=view.id; }
+      persistWorkViews(); $('#dialog').close(); renderOperations();
+    };
+  });
+}
+function bindWorkViews() {
+  document.querySelectorAll('[data-work-view]').forEach(button=>button.onclick=()=>{
+    if (!activeWorkView) { allWorkView.order=[...workColumnOrder]; allWorkView.visible=[...workVisibleColumns]; }
+    activeWorkView=button.dataset.workView;
+    applyWorkView(workViews.find(view=>view.id===activeWorkView)?.config || allWorkView); renderOperations();
+  });
+  $('#add-work-view').onclick=$('#save-work-view').onclick=()=>editWorkViewName();
+  const active=workViews.find(view=>view.id===activeWorkView);
+  if (!active) return;
+  if ($('#update-work-view')) $('#update-work-view').onclick=()=>{active.config=captureWorkView();persistWorkViews();renderOperations();};
+  $('#rename-work-view').onclick=()=>editWorkViewName(true);
+  $('#copy-work-view').onclick=()=>editWorkViewName();
+  $('#delete-work-view').onclick=()=>{
+    modal('Удалить слой',`<p>Удалить слой «${esc(active.name)}»?</p><div class="actions"><button class="btn" id="cancel-delete-view">Отмена</button><button class="btn primary" id="confirm-delete-view">Удалить</button></div>`,()=>{
+      $('#cancel-delete-view').onclick=()=>$('#dialog').close();
+      $('#confirm-delete-view').onclick=()=>{workViews=workViews.filter(view=>view.id!==activeWorkView);activeWorkView='';persistWorkViews();applyWorkView(allWorkView);$('#dialog').close();renderOperations();};
+    });
+  };
 }
 function workTableCell(work,key) {
   if (key === 'field') return '<span class="field-no">'+String(work.field).padStart(2,'0')+'</span><strong>'+esc(getField(work.field).name)+'</strong>';
@@ -431,10 +490,12 @@ function renderOperations() {
   const orderedColumns = workColumnOrder.map(key => workColumns.find(([id]) => id === key));
   const visibleColumns = orderedColumns.filter(([key]) => workVisibleColumns.includes(key));
   main.innerHTML = `${heading('Полевые операции', 'Выберите работу для просмотра трека и расчёта площади.', button('Обновить треки', 'sync', false, 'sync'))}
+    ${workViewsMarkup()}
     <div class="toolbar"><div class="row">${workFilterMarkup('work-field','Поле',filterFields,workField)}${workFilterMarkup('work-crop','Культура',filterCrops,workCrop)}${workFilterMarkup('work-machine','Техника',filterMachines,workMachine)}${workFilterMarkup('work-driver','Механизатор',filterDrivers,workDriver)}${workFilterMarkup('work-status','Статус',[['pending','Ждёт расчёта'],['confirmed','Подтверждена'],['rejected','Отклонена']],status)}</div><details class="work-columns"><summary class="btn">Колонки</summary><div class="work-columns-menu">${orderedColumns.map(([key,title],index) => `<div class="work-column-row"><label><input type="checkbox" data-work-column="${key}" aria-label="${esc(title)}" ${workVisibleColumns.includes(key) ? 'checked' : ''} ${workVisibleColumns.length === 1 && workVisibleColumns.includes(key) ? 'disabled' : ''}>${title}</label><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="-1" aria-label="Выше: ${esc(title)}" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="ds-icon-button" data-column-move="${key}" data-direction="1" aria-label="Ниже: ${esc(title)}" ${index === orderedColumns.length-1 ? 'disabled' : ''}>↓</button></div>`).join('')}<button type="button" class="btn subtle" id="reset-work-columns">По умолчанию</button></div></details></div>
     <section class="table-panel"><div class="table-scroll"><table><thead><tr>${visibleColumns.map(([,title]) => `<th>${title}</th>`).join('')}<th></th></tr></thead><tbody>${list.map(w => `<tr class="clickable" data-work="${w.id}">${visibleColumns.map(([key]) => `<td>${workTableCell(w,key)}</td>`).join('')}<td><button class="table-button" aria-label="Открыть работу ${esc(getField(w.field).name)}">${icon('arrow')}</button></td></tr>`).join('') || `<tr><td colspan="${visibleColumns.length+1}" class="empty">Работы не найдены</td></tr>`}</tbody></table></div></section>`;
   $('#sync').onclick = () => toast('Демо-треки актуальны. Подключение к Авроре GPS появится в рабочей версии.');
   bindWorkFilters();
+  bindWorkViews();
   const refreshColumns = selector => { saveWorkColumns(); renderOperations(); $('.work-columns').open = true; $(selector)?.focus(); };
   document.querySelectorAll('[data-work-column]').forEach(input => input.onchange = () => {
     workVisibleColumns = [...document.querySelectorAll('[data-work-column]:checked')].map(item => item.dataset.workColumn);
