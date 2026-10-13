@@ -120,6 +120,13 @@ const initialWorks = [
   { id: 6, field: 21, date: '2026-10-01', machine: 'МТЗ-3022', plate: 'АВ 4821', driver: 'Ковалёв Александр', time: '13:30–18:10', duration: '4 ч 40 мин', operation: 'Сев', implement: 'Horsch Pronto 6 DC', width: 6, net: 51.2, overlap: 1.3, status: 'confirmed', finalArea: 51.2, season: '2026', material: 'Пшеница · Элегия', rate: 220, unit: 'кг' },
   { id: 7, field: 8, date: '2026-09-30', machine: 'МТЗ-1523', plate: 'АВ 7102', driver: 'Петров Николай', time: '08:00–11:20', duration: '3 ч 20 мин', operation: 'Химобработка (гербициды)', implement: 'Amazone UX 4200', width: 24, net: 41.1, overlap: .8, status: 'confirmed', finalArea: 41.1, season: '2026', material: 'СЗР · демо-препарат', rate: 1.2, unit: 'л' },
 ];
+const materialTypes = ['Семена','Удобрения','СЗР'];
+const materialUnits = ['кг','л','т'];
+let materialsCatalog = [
+  {id:1,name:'Пшеница · Элегия',type:'Семена',unit:'кг'},
+  {id:2,name:'Удобрение · NPK 16:16:16',type:'Удобрения',unit:'кг'},
+  {id:3,name:'СЗР · демо-препарат',type:'СЗР',unit:'л'},
+];
 let implementsCatalog = [
   {id:1,name:'Horsch Pronto 6 DC',width:6,operations:['Сев']},
   {id:2,name:'КПС-8',width:8,operations:['Культивация']},
@@ -131,6 +138,7 @@ let projectMachines = structuredClone(AuroraFleet.initialProjectMachines);
 try {
   const saved = JSON.parse(localStorage.getItem('aurora-agro-demo-v1') || 'null');
   if (Array.isArray(saved?.fields) && saved.fields.length && saved.fields.every(f=>Number.isSafeInteger(f.id) && f.id>0 && typeof f.name==='string' && Number.isFinite(f.area) && f.rotation && typeof f.rotation==='object' && (!f.contour || (Array.isArray(f.contour) && f.contour.length>=3 && f.contour.every(p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite))))) && new Set(saved.fields.map(f=>f.id)).size===saved.fields.length) fields.splice(0,fields.length,...saved.fields);
+  if (Array.isArray(saved?.materialsCatalog) && saved.materialsCatalog.every(item=>Number.isSafeInteger(item.id) && item.id>0 && typeof item.name==='string' && item.name.trim() && materialTypes.includes(item.type) && materialUnits.includes(item.unit)) && new Set(saved.materialsCatalog.map(item=>item.id)).size===saved.materialsCatalog.length && new Set(saved.materialsCatalog.map(item=>item.name.trim().toLocaleLowerCase('ru'))).size===saved.materialsCatalog.length) materialsCatalog=saved.materialsCatalog;
   if (Array.isArray(saved?.implementsCatalog) && saved.implementsCatalog.length && saved.implementsCatalog.every(item=>Number.isSafeInteger(item.id) && item.id>0 && typeof item.name==='string' && item.name.trim() && Number.isFinite(item.width) && item.width>0 && Array.isArray(item.operations) && item.operations.length && item.operations.every(op=>systemOperations.includes(op))) && new Set(saved.implementsCatalog.map(item=>item.id)).size===saved.implementsCatalog.length && new Set(saved.implementsCatalog.map(item=>item.name.trim().toLocaleLowerCase('ru'))).size===saved.implementsCatalog.length) implementsCatalog=saved.implementsCatalog;
   if (saved?.works && Array.isArray(saved.works) && saved.works.length === initialWorks.length) works = saved.works;
   if (Array.isArray(saved?.addedFields)) saved.addedFields.forEach(f => {
@@ -186,7 +194,7 @@ const currentCrop = (f, year = season) => f.rotation[year] || '';
 const cropTag = crop => crop ? `<span class="crop"><i style="background:${cropInks[crop]}"></i>${esc(crop)}</span>` : '<span class="hint">Не назначена</span>';
 const options = (values, selectedValue) => values.map(v => `<option value="${esc(v)}" ${String(v) === String(selectedValue) ? 'selected' : ''}>${esc(v || 'Не назначена')}</option>`).join('');
 function persist() {
-  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ fields, works, implementsCatalog, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])), projectMachines, addedFields: fields.filter(f=>f.contour) })); }
+  try { localStorage.setItem('aurora-agro-demo-v1', JSON.stringify({ fields, works, implementsCatalog, materialsCatalog, rotation: Object.fromEntries(fields.map(f => [f.id, f.rotation])), projectMachines, addedFields: fields.filter(f=>f.contour) })); }
   catch { toast('Изменения действуют в текущей вкладке: сохранение браузером недоступно.'); }
 }
 let toastTimer;
@@ -313,7 +321,7 @@ function editorMarkup() {
   return `${header}<div class="step-line"><span class="${step === 'settings' ? 'current' : ''}">1. Параметры</span><i></i><span class="${step === 'area' ? 'current' : ''}">2. Площадь</span><i></i><span class="${step === 'materials' ? 'current' : ''}">3. Материалы</span></div>
     ${step === 'settings' ? `<div class="form-grid"><div class="full operation-picker"><label for="operation">Технологическая операция</label><div class="operation-control"><input id="operation" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="operation-options" autocomplete="off" required placeholder="Выберите или найдите операцию" value="${esc(draft.operation)}"><span class="operation-chevron ds-symbol" aria-hidden="true">expand_more</span></div><div id="operation-options" class="operation-options" role="listbox" aria-label="Технологические операции" hidden></div><span id="operation-search-status" class="visually-hidden" role="status" aria-live="polite"></span></div><label class="full">Прицепное орудие<select id="implement">${options([...new Set([...implementsCatalog.map(item=>item.name),draft.implement])],draft.implement)}</select><span class="width-note">Ширина захвата: <strong id="width-text">${fmt(draft.width,1)} м</strong></span></label><label>Механизатор<input id="driver" value="${esc(draft.driver)}" required></label><label>Сезон<select id="work-season">${options(['2025','2026','2027'],draft.season)}</select></label><div class="full width-note">${icon('leaf')}<span id="draft-crop">${esc(currentCrop(f,draft.season) || 'Культура не назначена')} · из севооборота</span></div></div><p class="calculate-note">Расчёт покажет чистую площадь, пропуски и перекрытия. В макете используются демонстрационные показатели.</p><div class="actions">${button('Запустить расчёт','calculate',true,'play')}</div>` : ''}
     ${step === 'area' ? `<div class="calculation"><span class="eyebrow">Чистая обработанная площадь · демо</span><div class="big-number">${fmt(result.net)} <small>га</small></div><div class="calculation-details"><div>Площадь поля<strong>${fmt(f.area)} га</strong></div><div>Перекрытия<strong>${fmt(result.overlap)} га</strong></div><div>Пропуски<strong>${fmt(result.gaps)} га</strong></div></div></div><h3>Какую площадь учесть?</h3><div class="area-choices">${[['calculated',`Расчётную · ${fmt(result.net)} га`],['field',`До площади поля · ${fmt(f.area)} га`],['manual','Ввести вручную']].map(([value,title]) => `<label class="choice"><input type="radio" name="area-mode" value="${value}" ${areaMode === value ? 'checked' : ''}>${title}</label>`).join('')}</div><label id="manual-area-label" ${areaMode !== 'manual' ? 'hidden' : ''}>Площадь, га<input id="manual-area" type="number" min="0.01" max="100000" step="0.01" value="${esc(manualArea)}"></label><p class="calculate-note">Перекрытия показаны отдельно. При повторном проходе или смещении трекера проверьте результат перед учётом.</p><div class="actions">${button('Назад','back-settings')}${button('Подтвердить площадь','accept-area',true)}</div>` : ''}
-    ${step === 'materials' ? `<div class="calculation"><span class="eyebrow">Площадь к учёту</span><div class="big-number">${fmt(draft.finalArea)} <small>га</small></div><span class="hint">${esc(draft.operation)} · сезон ${esc(draft.season)}</span></div><div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['','Пшеница · Элегия','Удобрение · NPK 16:16:16','СЗР · демо-препарат'],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions">${button('Назад','back-area')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
+    ${step === 'materials' ? `<div class="calculation"><span class="eyebrow">Площадь к учёту</span><div class="big-number">${fmt(draft.finalArea)} <small>га</small></div><span class="hint">${esc(draft.operation)} · сезон ${esc(draft.season)}</span></div><div class="materials-box"><h3>Использованные материалы</h3><div class="form-grid"><label class="full">Материал<select id="material">${options(['',...new Set([...materialsCatalog.map(item=>item.name),...(draft.material?[draft.material]:[])])],draft.material || '')}</select></label><label>Норма на гектар<input id="rate" type="number" min="0.001" max="100000" step="any" value="${draft.rate || ''}" placeholder="Например, 220" ${!draft.material ? 'disabled' : ''}></label><label>Единица измерения<select id="unit" ${!draft.material ? 'disabled' : ''}>${options(['кг','л','т'],draft.unit || 'кг')}</select></label></div><div class="amount"><span>Всего материала</span><strong id="material-total">${draft.material ? `${fmt(draft.finalArea*(draft.rate || 0))} ${esc(draft.unit || 'кг')}` : 'Без материалов'}</strong></div></div><div class="actions">${button('Назад','back-area')}${button('Подтвердить работу','confirm-work',true,'check')}</div>` : ''}
     <div class="actions">${button('Отклонить работу','reject',false)}</div>`;
 }
 function redrawEditor() { $('.editor').innerHTML = editorMarkup(); bindEditor(); $('#field-map').classList.toggle('calculated',!!result); }
@@ -405,7 +413,7 @@ function bindEditor() {
     $('#rate').disabled = !draft.material; $('#unit').disabled = !draft.material;
     $('#material-total').textContent = draft.material ? `${fmt(draft.finalArea * (draft.rate || 0))} ${draft.unit}` : 'Без материалов';
   };
-  if ($('#material')) $('#material').onchange = updateMaterial;
+  if ($('#material')) $('#material').onchange = () => {const item=materialsCatalog.find(item=>item.name===$('#material').value);if(item)$('#unit').value=item.unit;updateMaterial();};
   if ($('#rate')) $('#rate').oninput = updateMaterial;
   if ($('#unit')) $('#unit').onchange = updateMaterial;
   if ($('#confirm-work')) $('#confirm-work').onclick = () => {
@@ -650,7 +658,7 @@ const directoryCards = [
   {id:'implements',title:'Прицепные орудия',icon:'layers',description:'Ширина захвата используется при расчёте работ.',detailTitle:'Ширина захвата',get items(){return implementsCatalog.map(item=>[item.name,`${fmt(item.width,1)} м`,item.operations.join(', '),item.id]);}},
   {id:'crops',title:'Культуры',icon:'leaf',description:'Системный список культур и их цветов. Только для чтения.',detailTitle:'Цвет',items:cropCatalog.map(c=>[c.name,c.color])},
   {id:'operations',title:'Технологические операции',icon:'operations',description:'Системный список операций для полевых работ. Только для чтения.',items:systemOperations.map(name=>[name,''])},
-  {id:'materials',title:'Материалы',icon:'directory',description:'Фиксируется применение. Складские остатки не ведутся.',detailTitle:'Тип · единица',items:[['Пшеница · Элегия','Семена · кг'],['Удобрение · NPK 16:16:16','Удобрения · кг'],['СЗР · демо-препарат','СЗР · л']]},
+  {id:'materials',title:'Материалы',icon:'directory',description:'Фиксируется применение. Складские остатки не ведутся.',detailTitle:'Тип · единица',get items(){return materialsCatalog.map(item=>[item.name,item.type+' · '+item.unit,'',item.id]);}},
 ];
 const recordCount = count => `${count} ${count % 10 === 1 && count % 100 !== 11 ? 'запись' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'записи' : 'записей'}`;
 const formatTrackerOffset = value => value === 0 ? 'По центру' : `${Math.abs(value).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} м ${value < 0 ? 'влево' : 'вправо'}`;
@@ -666,11 +674,12 @@ function renderDirectoryPage() {
   const hasDetail = !!card.detailTitle;
   const isMachines = card.id === 'machines';
   const isImplements = card.id === 'implements';
+  const isMaterials = card.id === 'materials';
   const isCrops = card.id === 'crops';
   const isOperations = card.id === 'operations';
   const items = [...card.items].sort(([first], [second]) => first.localeCompare(second, 'ru', {numeric:true}));
-  const columns = 1 + Number(hasDetail) + (isMachines ? 2 : 0) + (isImplements ? 2 : 0);
-  main.innerHTML=`${heading(card.title,card.description,isMachines?button('Добавить технику','add-machine',true,'plus'):isImplements?button('Добавить оборудование','add-implement',true,'plus'):'')}<div class="directory-toolbar"><a class="btn" href="#directory">← Все справочники</a>${searchBox('directory-search',`Поиск: ${card.title.toLowerCase()}`)}<span class="hint" id="directory-result-count">${recordCount(items.length)}</span></div><section class="table-panel"><div class="table-scroll"><table class="directory-table"><thead><tr><th>Наименование</th>${hasDetail?`<th>${card.detailTitle}</th>`:''}${isMachines?'<th>Тип техники</th><th>Смещение трекера</th>':''}${isImplements?'<th>Технологические операции</th><th></th>':''}</tr></thead><tbody>${items.map(([name,detail,type,id])=>`<tr data-search="${esc(`${name} ${detail} ${type || ''}`.toLocaleLowerCase('ru'))}" ${isMachines?`data-machine-href="#directory/machines/${encodeURIComponent(id)}/edit"`:''}><td>${isMachines?`<a class="directory-machine-link" href="#directory/machines/${encodeURIComponent(id)}/edit" aria-label="Открыть технику ${esc(name)}"><strong>${esc(name)}</strong></a>`:`<strong>${esc(name)}</strong>`}</td>${hasDetail?`<td>${isCrops?`<span class="row"><i aria-hidden="true" style="display:inline-block;width:20px;height:20px;flex-shrink:0;border-radius:4px;border:1px solid var(--ds-border);background:${esc(detail)}"></i></span>`:esc(detail)}</td>`:''}${isMachines?`<td>${esc(type || 'Не указан')}</td><td>${formatTrackerOffset(projectMachines.find(machine => machine.id === id)?.trackerOffset ?? 0)}</td>`:''}${isImplements?`<td>${esc(type)}</td><td><button type="button" class="ds-icon-button" data-edit-implement="${id}" aria-label="Редактировать ${esc(name)}" title="Редактировать ${esc(name)}">${icon('edit')}</button></td>`:''}</tr>`).join('')}<tr id="directory-empty" hidden><td colspan="${columns}" class="empty">Ничего не найдено. Попробуйте другой запрос.</td></tr></tbody></table></div></section>${isCrops || isOperations || isImplements?'':`<p class="section-note">${isMachines?'Технику можно добавить из корневого проекта, изменить её тип и положение трекера для этого хозяйства. Изменения сохраняются только в браузере.':'В MVP-макете записи доступны только для просмотра.'}</p>`}`;
+  const columns = 1 + Number(hasDetail) + (isMachines ? 2 : 0) + (isImplements ? 2 : 0) + Number(isMaterials);
+  main.innerHTML=`${heading(card.title,card.description,isMachines?button('Добавить','add-machine',true,'plus'):isImplements?button('Добавить','add-implement',true,'plus'):isMaterials?button('Добавить','add-material',true,'plus'):'')}<div class="directory-toolbar"><a class="btn" href="#directory">← Все справочники</a>${searchBox('directory-search',`Поиск: ${card.title.toLowerCase()}`)}<span class="hint" id="directory-result-count">${recordCount(items.length)}</span></div><section class="table-panel"><div class="table-scroll"><table class="directory-table"><thead><tr><th>Наименование</th>${hasDetail?`<th>${card.detailTitle}</th>`:''}${isMachines?'<th>Тип техники</th><th>Смещение трекера</th>':''}${isImplements?'<th>Технологические операции</th><th></th>':isMaterials?'<th></th>':''}</tr></thead><tbody>${items.map(([name,detail,type,id])=>`<tr data-search="${esc(`${name} ${detail} ${type || ''}`.toLocaleLowerCase('ru'))}" ${isMachines?`data-machine-href="#directory/machines/${encodeURIComponent(id)}/edit"`:''}><td>${isMachines?`<a class="directory-machine-link" href="#directory/machines/${encodeURIComponent(id)}/edit" aria-label="Открыть технику ${esc(name)}"><strong>${esc(name)}</strong></a>`:`<strong>${esc(name)}</strong>`}</td>${hasDetail?`<td>${isCrops?`<span class="row"><i aria-hidden="true" style="display:inline-block;width:20px;height:20px;flex-shrink:0;border-radius:4px;border:1px solid var(--ds-border);background:${esc(detail)}"></i></span>`:esc(detail)}</td>`:''}${isMachines?`<td>${esc(type || 'Не указан')}</td><td>${formatTrackerOffset(projectMachines.find(machine => machine.id === id)?.trackerOffset ?? 0)}</td>`:''}${isMaterials?`<td><button type="button" class="ds-icon-button" data-edit-material="${id}" aria-label="Редактировать ${esc(name)}" title="Редактировать ${esc(name)}">${icon('edit')}</button></td>`:''}${isImplements?`<td>${esc(type)}</td><td><button type="button" class="ds-icon-button" data-edit-implement="${id}" aria-label="Редактировать ${esc(name)}" title="Редактировать ${esc(name)}">${icon('edit')}</button></td>`:''}</tr>`).join('')}<tr id="directory-empty" hidden><td colspan="${columns}" class="empty">Ничего не найдено. Попробуйте другой запрос.</td></tr></tbody></table></div></section>${isCrops || isOperations || isImplements || isMaterials?'':`<p class="section-note">${isMachines?'Технику можно добавить из корневого проекта, изменить её тип и положение трекера для этого хозяйства. Изменения сохраняются только в браузере.':'В MVP-макете записи доступны только для просмотра.'}</p>`}`;
   $('#directory-search').addEventListener('input', e => {
     const query = e.target.value.trim().toLocaleLowerCase('ru');
     let visible = 0;
@@ -678,6 +687,10 @@ function renderDirectoryPage() {
     $('#directory-result-count').textContent = `${visible} из ${card.items.length}`;
     $('#directory-empty').hidden = visible > 0;
   });
+  if (isMaterials) {
+    $('#add-material').onclick=()=>openMaterialEditor();
+    $$('[data-edit-material]').forEach(button=>button.onclick=()=>openMaterialEditor(Number(button.dataset.editMaterial)));
+  }
   if (isImplements) {
     $('#add-implement').onclick=()=>openImplementEditor();
     $$('[data-edit-implement]').forEach(button=>button.onclick=()=>openImplementEditor(Number(button.dataset.editImplement)));
@@ -688,6 +701,33 @@ function renderDirectoryPage() {
       if (!event.target.closest('a')) location.hash = row.dataset.machineHref;
     });
   }
+}
+function materialError(id, values) {
+  if (!values.name.trim()) return 'Введите название материала';
+  if (!materialTypes.includes(values.type)) return 'Выберите тип материала';
+  if (!materialUnits.includes(values.unit)) return 'Выберите единицу измерения';
+  if (materialsCatalog.some(item=>item.id!==id && item.name.trim().toLocaleLowerCase('ru')===values.name.trim().toLocaleLowerCase('ru'))) return 'Материал с таким названием уже есть';
+  if (id!==null && !materialsCatalog.some(item=>item.id===id)) return 'Материал не найден';
+  return '';
+}
+function saveMaterial(id, values) {
+  const error=materialError(id,values);if(error)throw new Error(error);
+  const item=materialsCatalog.find(item=>item.id===id);
+  const changes={name:values.name.trim(),type:values.type,unit:values.unit};
+  if(item){const oldName=item.name;Object.assign(item,changes);works.forEach(work=>{if(work.material===oldName)work.material=item.name;});if(draft?.material===oldName)draft.material=item.name;}
+  else materialsCatalog.push({id:Math.max(0,...materialsCatalog.map(item=>item.id))+1,...changes});
+  persist();
+}
+function openMaterialEditor(id=null) {
+  const item=materialsCatalog.find(item=>item.id===id);
+  modal(item?'Редактировать материал':'Добавить материал',`<form id="material-form"><label>Название<input id="material-name" required maxlength="100" value="${esc(item?.name || '')}" placeholder="Название материала"></label><label>Тип<select id="material-type">${options(materialTypes,item?.type || 'Семена')}</select></label><label>Единица измерения<select id="material-unit">${options(materialUnits,item?.unit || 'кг')}</select></label><p id="material-error" class="fleet-error" role="alert"></p><div class="actions"><button type="button" class="btn" id="cancel-material">Отмена</button><button type="submit" class="btn primary" id="save-material" disabled>Сохранить</button></div></form>`,()=>{
+    const values=()=>({name:$('#material-name').value,type:$('#material-type').value,unit:$('#material-unit').value});
+    const validate=()=>{const error=materialError(id,values());$('#save-material').disabled=!!error;$('#material-error').textContent=$('#material-name').value.trim()?error:'';};
+    $('#material-form').oninput=validate;$('#material-form').onchange=validate;
+    $('#cancel-material').onclick=()=>$('#dialog').close();
+    $('#material-form').onsubmit=event=>{event.preventDefault();try{saveMaterial(id,values());}catch(error){$('#material-error').textContent=error.message;return;}$('#dialog').close();renderDirectoryPage();toast('Материал сохранён');};
+    validate();$('#material-name').focus();
+  });
 }
 function implementError(id, values) {
   if (!values.name.trim()) return 'Введите название оборудования';
